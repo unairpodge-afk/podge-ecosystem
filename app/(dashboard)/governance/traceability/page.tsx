@@ -7,33 +7,15 @@ export const dynamic = 'force-dynamic';
 export default async function TraceabilityPage() {
   // 1. MENGAMBIL DATA TRACEABILITY (READ)
   let blockchainLogs = [];
+  let fetchError: string | null = null;
+
   try {
     const dbResult = await query('SELECT * FROM traceability_logs ORDER BY created_at DESC');
     blockchainLogs = dbResult.rows;
   } catch (e) {
-    // Fallback Mock Data jika tabel database belum dibuat / sedang migrasi
-    blockchainLogs = [
-      {
-        id: 1,
-        batch_id: 'BATCH-2026-001',
-        farmer_name: 'Koperasi Sawit Makmur',
-        tbs_weight_kg: 4500.00,
-        pks_destination: 'PKS PT Aura Sawit',
-        blockchain_hash: '0x8f3c9a1b2e4f5d6c7a8b9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-        status: 'Terverifikasi',
-        created_at: new Date('2026-06-05T08:00:00Z')
-      },
-      {
-        id: 2,
-        batch_id: 'BATCH-2026-002',
-        farmer_name: 'Kelompok Tani Berkah',
-        tbs_weight_kg: 3200.00,
-        pks_destination: 'PKS PT Riau Lestari',
-        blockchain_hash: '0x2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b',
-        status: 'Terverifikasi',
-        created_at: new Date('2026-06-05T09:15:00Z')
-      }
-    ];
+    const message = e instanceof Error ? e.message : String(e);
+    fetchError = `Gagal membaca data traceability_logs: ${message}`;
+    console.error(fetchError, e);
   }
 
   // 2. SERVER ACTION UNTUK MENAMBAH LOG TRACEABILITY (CREATE)
@@ -57,7 +39,9 @@ export default async function TraceabilityPage() {
         [batchId, farmerName, tbsWeightKg, pksDestination, hash, status]
       );
     } catch (e) {
-      console.error("Gagal menyimpan log ketelusuran ke database:", e);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error('Gagal menyimpan log ketelusuran ke database:', message, e);
+      throw new Error(`Gagal menyimpan log ketelusuran: ${message}`);
     }
 
     revalidatePath('/governance/traceability');
@@ -76,7 +60,17 @@ export default async function TraceabilityPage() {
       {/* Form Log Baru */}
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Input Log Pengiriman TBS Baru</h2>
-        
+
+        {fetchError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="font-semibold">Ada masalah koneksi database.</p>
+            <p>{fetchError}</p>
+            <p className="mt-2 text-xs text-red-600">
+              Pastikan tabel <code>traceability_logs</code> sudah ada dan environment database Supabase terhubung.
+            </p>
+          </div>
+        ) : null}
+
         <form action={addTraceabilityLog} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <label className="text-sm text-gray-600 mb-1">Batch ID</label>
