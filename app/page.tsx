@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
+import PodgeExplanation from './components/podge-explanation';
+
+export const dynamic = 'force-dynamic';
 
 export default async function MainLandingPage() {
   let totalSukukProjects = 0;
@@ -9,7 +12,7 @@ export default async function MainLandingPage() {
   try {
     const sukukRes = await query('SELECT COUNT(*) FROM green_sukuk_projects');
     totalSukukProjects = parseInt(sukukRes.rows[0].count, 10);
-  } catch (e) {
+  } catch {
     totalSukukProjects = 5;
   }
 
@@ -17,7 +20,7 @@ export default async function MainLandingPage() {
     const traceRes = await query('SELECT COUNT(*), SUM(tbs_weight_kg) FROM traceability_logs');
     totalTraceabilityLogs = parseInt(traceRes.rows[0].count, 10);
     totalVolumeTbs = parseFloat(traceRes.rows[0].sum) || 7700;
-  } catch (e) {
+  } catch {
     totalTraceabilityLogs = 12;
     totalVolumeTbs = 7700;
   }
@@ -195,6 +198,8 @@ export default async function MainLandingPage() {
         </div>
 
       </main>
+
+      <PodgeExplanation />
 
       {/* Footer */}
       <footer className="relative z-10 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col sm:flex-row items-center justify-between border-t border-emerald-900/10 text-xs text-gray-500">
