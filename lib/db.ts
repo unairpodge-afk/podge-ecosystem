@@ -1,8 +1,28 @@
 import { Pool } from 'pg';
 
-// Gunakan POSTGRES_URL (Supabase Pooler / PgBouncer) untuk Vercel serverless
+// Supabase Postgres pooler may present a TLS certificate chain that Node
+// rejects in some environments. Disable cert verification here so the app can
+// reliably connect to the Supabase database.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+function getEnv(name: string) {
+  const value = process.env[name];
+  return value && value.trim().length > 0 ? value : undefined;
+}
+
+const connectionString =
+  getEnv('POSTGRES_URL') ??
+  getEnv('DATABASE_URL') ??
+  getEnv('POSTGRES_URL_NON_POOLING');
+
+if (!connectionString) {
+  throw new Error(
+    'Database connection string is missing. Set POSTGRES_URL, DATABASE_URL, or POSTGRES_URL_NON_POOLING in .env.local.'
+  );
+}
+
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
+  connectionString,
   ssl: {
     rejectUnauthorized: false,
   },
