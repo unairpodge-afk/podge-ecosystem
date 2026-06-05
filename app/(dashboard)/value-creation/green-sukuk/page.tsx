@@ -5,8 +5,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function GreenSukukPage() {
   // 1. MENGAMBIL DATA (READ)
-  const dbResult = await query('SELECT * FROM green_sukuk_projects ORDER BY created_at DESC');
-  const projects = dbResult.rows;
+  let projects = [];
+  try {
+    const dbResult = await query('SELECT * FROM green_sukuk_projects ORDER BY created_at DESC');
+    projects = dbResult.rows;
+  } catch (e) {
+    console.error('Gagal mengambil data green_sukuk_projects:', e);
+  }
+
 
   // 2. SERVER ACTION UNTUK MENAMBAH DATA (CREATE)
   async function addProject(formData: FormData) {

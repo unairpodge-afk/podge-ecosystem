@@ -7,8 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function CompliancePage() {
   // 1. Mengambil data audit dari database
-  const dbResult = await query('SELECT * FROM compliance_evaluations ORDER BY audit_date DESC');
-  const records = dbResult.rows;
+  let records = [];
+  try {
+    const dbResult = await query('SELECT * FROM compliance_evaluations ORDER BY audit_date DESC');
+    records = dbResult.rows;
+  } catch (e) {
+    console.error('Gagal mengambil data compliance_evaluations:', e);
+  }
+
 
   // 2. Server Action untuk input data audit baru
   async function addEvaluation(formData: FormData) {
