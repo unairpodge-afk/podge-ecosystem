@@ -1,6 +1,8 @@
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
+
 export default async function GreenSukukPage() {
   // 1. MENGAMBIL DATA (READ)
   const dbResult = await query('SELECT * FROM green_sukuk_projects ORDER BY created_at DESC');

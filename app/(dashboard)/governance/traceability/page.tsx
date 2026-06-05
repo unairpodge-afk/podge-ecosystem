@@ -2,6 +2,8 @@ import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TraceabilityPage() {
   // 1. MENGAMBIL DATA TRACEABILITY (READ)
   let blockchainLogs = [];
