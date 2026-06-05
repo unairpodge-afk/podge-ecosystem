@@ -1,9 +1,10 @@
 import { Pool } from 'pg';
 
-// Mengambil URL database dari environment variables
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: { 
+    rejectUnauthorized: false 
+  },
 });
 
 export async function query(text: string, params?: any[]) {
