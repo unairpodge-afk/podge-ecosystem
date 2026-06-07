@@ -17,7 +17,14 @@ export default async function GreenSukukPage() {
   let projects: GreenSukukProject[] = [];
 
   try {
-    const dbResult = await query<GreenSukukProject>('SELECT * FROM green_sukuk_projects ORDER BY created_at DESC');
+    const dbResult = await query<GreenSukukProject>(
+      `SELECT * FROM green_sukuk_projects 
+       WHERE project_name LIKE '%PT Borneo Palm Energy%' 
+          OR project_name LIKE '%PT Riau Agromakmur%' 
+          OR project_name LIKE '%PT Sumatera Palm Lestari%'
+          OR id > 3
+       ORDER BY created_at DESC`
+    );
     projects = dbResult.rows;
   } catch (e) {
     console.error('Gagal mengambil data green_sukuk_projects:', e);

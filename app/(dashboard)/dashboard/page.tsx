@@ -91,14 +91,14 @@ export default async function DashboardPage() {
       console.error('Gagal mengambil data sertifikasi compliance:', err);
     }
 
-    isSustainable = farmRecord?.public_status === 'Terverifikasi' || farmerCertifications.length > 0;
+    isSustainable = farmRecord?.verification_status === 'verified' || farmRecord?.public_status === 'Terverifikasi' || farmRecord?.public_status === 'live' || farmerCertifications.length > 0;
     pricePremiumPerKg = isSustainable ? 400 : 0; // Rp 400 premium per Kg for sustainable certified palm
     totalPremiumEarned = totalWeight * pricePremiumPerKg;
 
     checklist = {
       stdb: !!farmRecord?.farm_id,
       sppl: !!farmRecord?.farm_id,
-      geofence: farmRecord?.public_status === 'Terverifikasi',
+      geofence: farmRecord?.verification_status === 'verified' || farmRecord?.public_status === 'Terverifikasi' || farmRecord?.public_status === 'live',
       coop: !!farmRecord?.cooperative_name
     };
     completedChecks = Object.values(checklist).filter(Boolean).length;

@@ -232,6 +232,268 @@ export const featuredBatch: BatchPassport = {
   pdfReportUrl: '/verify/BATCH-PODGE-2100-001/report.pdf',
 };
 
+export const borneoBatch: BatchPassport = {
+  id: 'featured-borneo-2026-001',
+  batch_id: 'BATCH-BORNEO-2026-001',
+  farmer_name: 'Kelompok Tani Sawit Jaya Kotawaringin',
+  tbs_weight_kg: 3850,
+  pks_destination: 'PKS PT Borneo Palm Energy Mill',
+  blockchain_hash: '0x9c3d4e8b7f1a2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5b6c7d',
+  status: 'Terverifikasi',
+  created_at: '2026-06-05T10:20:00.000Z',
+  estate: {
+    name: 'Kavling Sawit Mandiri - Blok Borneo B3',
+    province: 'Kalimantan Tengah',
+    district: 'Arut Selatan',
+    centroid: { lat: -2.4172, lng: 111.6214 },
+    polygon: [
+      { lat: -2.4140, lng: 111.6180 },
+      { lat: -2.4140, lng: 111.6250 },
+      { lat: -2.4200, lng: 111.6250 },
+      { lat: -2.4200, lng: 111.6180 }
+    ],
+    areaHa: 6.5,
+  },
+  cooperative: {
+    name: 'KUD Borneo Manunggal',
+    registrationId: 'KOP-KALTENG-KOBAR-2026-0092',
+    chairperson: 'Bapak H. Ahmad Dahlan',
+    validationStatus: 'Validated by PODGE Admin + Independent Auditor',
+    verifiedAt: '2026-06-05T07:48:00.000Z',
+  },
+  farmer: {
+    name: 'Kelompok Tani Sawit Jaya Kotawaringin',
+    memberId: 'FARMER-GRP-KOBAR-092',
+    nationalIdMasked: '6201********0014',
+    phoneMasked: '+62 812 **** 7890',
+  },
+  certifications: [
+    {
+      scheme: 'ISPO',
+      certificateNo: 'ISPO/ID-KALTENG/2026/0882',
+      holder: 'KUD Borneo Manunggal',
+      validUntil: '2031-05-10',
+      documentUrl: '#',
+      status: 'Valid',
+    }
+  ],
+  evidencePhotos: [
+    {
+      label: 'Foto Bukti Panen',
+      url: '/evidence/batch-podge-2100-001-harvest.svg',
+      capturedAt: '2026-06-05T07:12:00.000Z',
+      geoTag: '-2.4172, 111.6214',
+      hash: 'sha256:7c3d4e8b7f1a2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5b6c7d',
+    },
+    {
+      label: 'Foto Bukti Pengiriman',
+      url: '/evidence/batch-podge-2100-001-delivery.svg',
+      capturedAt: '2026-06-05T08:04:00.000Z',
+      geoTag: '-2.3850, 111.6520',
+      hash: 'sha256:cc71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+    },
+  ],
+  roles: [
+    { role: 'Petani', actor: 'Kelompok Tani Sawit Jaya Kotawaringin', authority: 'Create harvest evidence', status: 'Signed' },
+    { role: 'Koperasi', actor: 'KUD Borneo Manunggal', authority: 'Validate member and volume', status: 'Signed' },
+    { role: 'PKS', actor: 'PKS PT Borneo Palm Energy Mill', authority: 'Receive shipment', status: 'Signed' },
+    { role: 'Auditor', actor: 'Auditor Independen ISPO/RSPO', authority: 'Verify certificates and geofence', status: 'Signed' },
+    { role: 'Admin', actor: 'PODGE Governance Node', authority: 'Lock ledger record', status: 'Signed' },
+  ],
+  auditTrail: [
+    {
+      time: '2026-06-05T07:12:00.000Z',
+      actor: 'Petani',
+      action: 'Harvest photo and geolocation submitted',
+      previousHash: 'GENESIS',
+      entryHash: '0x50bb6d7990a5f82ff3b576817fb6cf710f8c8da2cd55dd12a14a2d3b4dff2100',
+    },
+    {
+      time: '2026-06-05T07:48:00.000Z',
+      actor: 'Koperasi',
+      action: 'Volume weighed and cooperative identity validated',
+      previousHash: '0x50bb6d7990a5f82ff3b576817fb6cf710f8c8da2cd55dd12a14a2d3b4dff2100',
+      entryHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
+    },
+    {
+      time: '2026-06-05T09:49:00.000Z',
+      actor: 'PKS',
+      action: 'TBS delivery arrived, weighed, and accepted at Mill reception',
+      previousHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
+      entryHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+    },
+    {
+      time: '2026-06-05T10:20:00.000Z',
+      actor: 'Auditor',
+      action: 'ISPO compliance documents and geofencing validation finalized',
+      previousHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+      entryHash: '0x9c3d4e8b7f1a2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5b6c7d',
+    },
+  ],
+  antiFraudChecks: [
+    { check: 'Duplicate hash detection', result: 'Pass', detail: 'No matching hash found in active ledger sample.' },
+    { check: 'Volume anomaly', result: 'Pass', detail: '3,850 Kg is within cooperative route range.' },
+    { check: 'Distance sanity', result: 'Pass', detail: '38 Km route distance is below 120 Km regional max.' },
+    { check: 'Geofence validation', result: 'Pass', detail: 'Harvest evidence coordinate falls inside Blok Borneo B3 polygon.' },
+    { check: 'Role signature completeness', result: 'Pass', detail: 'Petani, koperasi, PKS, auditor, and admin signed the trail.' },
+  ],
+  logistics: {
+    suratJalanNo: 'SJ-BORNEO-2026-001',
+    invoiceNo: 'INV-BORNEO-2026-001',
+    truckPlate: 'KH 8801 KB',
+    driverMasked: 'DVR-****-092',
+    distanceKm: 38,
+    maxDistanceKm: 120,
+  },
+  tbsDetails: {
+    transactionId: 'TX-TBS-BORNEO-001',
+    grossWeight: 6350,
+    tareWeight: 2500,
+    netWeight: 3850,
+    quality: 'Kelas A (Super)',
+  },
+  transportationDetails: {
+    deliveryId: 'TR-LOG-BORNEO-001',
+    licensePlate: 'KH 8801 KB',
+    driver: 'Joko Wahyudi',
+    departureTime: '2026-06-05T08:04:00.000Z',
+    arrivalTime: '2026-06-05T09:49:00.000Z',
+    gpsStatus: 'Active (Locked GPS-Track)',
+  },
+  pdfReportUrl: '/verify/BATCH-BORNEO-2026-001/report.pdf',
+};
+
+export const sumutBatch: BatchPassport = {
+  id: 'featured-sumut-2026-001',
+  batch_id: 'BATCH-SUMUT-2026-001',
+  farmer_name: 'Kelompok Tani Harapan Makmur',
+  tbs_weight_kg: 3120,
+  pks_destination: 'PKS PT Sumatera Palm Lestari Mill',
+  blockchain_hash: '0x8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+  status: 'Terverifikasi',
+  created_at: '2026-06-05T10:20:00.000Z',
+  estate: {
+    name: 'Kavling Sawit Mandiri - Blok Sumut H5',
+    province: 'Sumatera Utara',
+    district: 'Labuhanbatu',
+    centroid: { lat: 2.1524, lng: 99.8245 },
+    polygon: [
+      { lat: 2.1550, lng: 99.8210 },
+      { lat: 2.1550, lng: 99.8280 },
+      { lat: 2.1500, lng: 99.8280 },
+      { lat: 2.1500, lng: 99.8210 }
+    ],
+    areaHa: 5.2,
+  },
+  cooperative: {
+    name: 'Koperasi Produsen Sawit Labuhanbatu',
+    registrationId: 'KOP-SUMUT-LAB-2026-0115',
+    chairperson: 'Bapak H. Syamsul Arifin',
+    validationStatus: 'Validated by PODGE Admin + Independent Auditor',
+    verifiedAt: '2026-06-05T07:48:00.000Z',
+  },
+  farmer: {
+    name: 'Kelompok Tani Harapan Makmur',
+    memberId: 'FARMER-GRP-LAB-115',
+    nationalIdMasked: '1207********0032',
+    phoneMasked: '+62 812 **** 6666',
+  },
+  certifications: [
+    {
+      scheme: 'RSPO',
+      certificateNo: 'RSPO-ISH-ID-2026-8891',
+      holder: 'Koperasi Produsen Sawit Labuhanbatu',
+      validUntil: '2030-12-15',
+      documentUrl: '#',
+      status: 'Valid',
+    }
+  ],
+  evidencePhotos: [
+    {
+      label: 'Foto Bukti Panen',
+      url: '/evidence/batch-podge-2100-001-harvest.svg',
+      capturedAt: '2026-06-05T07:12:00.000Z',
+      geoTag: '2.1524, 99.8245',
+      hash: 'sha256:8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+    },
+    {
+      label: 'Foto Bukti Pengiriman',
+      url: '/evidence/batch-podge-2100-001-delivery.svg',
+      capturedAt: '2026-06-05T08:04:00.000Z',
+      geoTag: '2.2240, 99.8920',
+      hash: 'sha256:cc71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+    },
+  ],
+  roles: [
+    { role: 'Petani', actor: 'Kelompok Tani Harapan Makmur', authority: 'Create harvest evidence', status: 'Signed' },
+    { role: 'Koperasi', actor: 'Koperasi Produsen Sawit Labuhanbatu', authority: 'Validate member and volume', status: 'Signed' },
+    { role: 'PKS', actor: 'PKS PT Sumatera Palm Lestari Mill', authority: 'Receive shipment', status: 'Signed' },
+    { role: 'Auditor', actor: 'Auditor Independen ISPO/RSPO', authority: 'Verify certificates and geofence', status: 'Signed' },
+    { role: 'Admin', actor: 'PODGE Governance Node', authority: 'Lock ledger record', status: 'Signed' },
+  ],
+  auditTrail: [
+    {
+      time: '2026-06-05T07:12:00.000Z',
+      actor: 'Petani',
+      action: 'Harvest photo and geolocation submitted',
+      previousHash: 'GENESIS',
+      entryHash: '0x50bb6d7990a5f82ff3b576817fb6cf710f8c8da2cd55dd12a14a2d3b4dff2100',
+    },
+    {
+      time: '2026-06-05T07:48:00.000Z',
+      actor: 'Koperasi',
+      action: 'Volume weighed and cooperative identity validated',
+      previousHash: '0x50bb6d7990a5f82ff3b576817fb6cf710f8c8da2cd55dd12a14a2d3b4dff2100',
+      entryHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
+    },
+    {
+      time: '2026-06-05T09:49:00.000Z',
+      actor: 'PKS',
+      action: 'TBS delivery arrived, weighed, and accepted at Mill reception',
+      previousHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
+      entryHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+    },
+    {
+      time: '2026-06-05T10:20:00.000Z',
+      actor: 'Auditor',
+      action: 'RSPO compliance documents and geofencing validation finalized',
+      previousHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+      entryHash: '0x8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+    },
+  ],
+  antiFraudChecks: [
+    { check: 'Duplicate hash detection', result: 'Pass', detail: 'No matching hash found in active ledger sample.' },
+    { check: 'Volume anomaly', result: 'Pass', detail: '3,120 Kg is within cooperative capacity.' },
+    { check: 'Distance sanity', result: 'Pass', detail: '24 Km route distance is below 120 Km regional max.' },
+    { check: 'Geofence validation', result: 'Pass', detail: 'Harvest evidence coordinate falls inside Blok Sumut H5 polygon.' },
+    { check: 'Role signature completeness', result: 'Pass', detail: 'Petani, koperasi, PKS, auditor, and admin signed the trail.' },
+  ],
+  logistics: {
+    suratJalanNo: 'SJ-SUMUT-2026-001',
+    invoiceNo: 'INV-SUMUT-2026-001',
+    truckPlate: 'BK 9054 YL',
+    driverMasked: 'DVR-****-115',
+    distanceKm: 24,
+    maxDistanceKm: 120,
+  },
+  tbsDetails: {
+    transactionId: 'TX-TBS-SUMUT-001',
+    grossWeight: 5520,
+    tareWeight: 2400,
+    netWeight: 3120,
+    quality: 'Kelas A (Super)',
+  },
+  transportationDetails: {
+    deliveryId: 'TR-LOG-SUMUT-001',
+    licensePlate: 'BK 9054 YL',
+    driver: 'Rahmat Hidayat',
+    departureTime: '2026-06-05T08:04:00.000Z',
+    arrivalTime: '2026-06-05T09:49:00.000Z',
+    gpsStatus: 'Active (Locked GPS-Track)',
+  },
+  pdfReportUrl: '/verify/BATCH-SUMUT-2026-001/report.pdf',
+};
+
 export function getFeaturedTraceabilityLog(): TraceabilityLog {
   return {
     id: featuredBatch.id,
@@ -260,6 +522,12 @@ export function getTrustScore(batch: TraceabilityLog | BatchPassport) {
 export async function getBatchPassport(batchId: string): Promise<BatchPassport | null> {
   if (batchId === featuredBatch.batch_id) {
     return featuredBatch;
+  }
+  if (batchId === borneoBatch.batch_id) {
+    return borneoBatch;
+  }
+  if (batchId === sumutBatch.batch_id) {
+    return sumutBatch;
   }
 
   const result = await query('SELECT * FROM traceability_logs WHERE batch_id = $1 LIMIT 1', [batchId]);

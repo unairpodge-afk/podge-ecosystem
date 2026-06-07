@@ -13,7 +13,12 @@ export default async function TraceabilityPage() {
   let fetchError: string | null = null;
 
   try {
-    const dbResult = await query<TraceabilityLog>('SELECT * FROM traceability_logs ORDER BY created_at DESC');
+    const dbResult = await query<TraceabilityLog>(
+      `SELECT * FROM traceability_logs 
+       WHERE batch_id IN ('BATCH-PODGE-2100-001', 'BATCH-BORNEO-2026-001', 'BATCH-SUMUT-2026-001') 
+          OR status = 'Dalam Proses' 
+       ORDER BY created_at DESC`
+    );
     blockchainLogs = dbResult.rows;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
