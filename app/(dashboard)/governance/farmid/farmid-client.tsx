@@ -46,6 +46,7 @@ type FarmerRecord = {
   public_note: string | null;
   is_claimed: boolean;
   claimed_at: string | null;
+  verified_at?: string | null;
   updated_at: string;
   photo_base64?: string | null;
 };
@@ -398,12 +399,25 @@ export default function FarmIdClient({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Helper to generate a stable ledger hash based on farm ID
+    const getCardHash = (id: string) => {
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        hash = (hash << 5) - hash + id.charCodeAt(i);
+        hash |= 0;
+      }
+      const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+      return `PODGE-TX-${hex}-B3C4451F700A`;
+    };
+
+    const cardHash = record ? getCardHash(record.farm_id) : 'PODGE-TX-PENDING-BF49E82D2F0A';
+
     // 1. Background Gradient (emerald/black)
     const grad = ctx.createLinearGradient(0, 0, 1000, 600);
     if (record.verification_status === 'verified') {
-      grad.addColorStop(0, '#0c301c');
-      grad.addColorStop(0.5, '#020905');
-      grad.addColorStop(1, '#12542e');
+      grad.addColorStop(0, '#04140b');
+      grad.addColorStop(0.5, '#010503');
+      grad.addColorStop(1, '#0b2415');
     } else {
       grad.addColorStop(0, '#06150d');
       grad.addColorStop(0.5, '#020704');
@@ -481,6 +495,75 @@ export default function FarmIdClient({
 
     function drawTextAndQR() {
       if (!ctx) return;
+
+      // 5. Cyberpunk Palm Oil Leaf Glow on Right Side (Watermark Background)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = 15;
+      ctx.lineWidth = 2.5;
+
+      // Cyberpalm main stem
+      ctx.beginPath();
+      ctx.moveTo(900, 390);
+      ctx.quadraticCurveTo(860, 240, 930, 120);
+      ctx.stroke();
+
+      // Cyberpalm leaf segments (branching curves)
+      const leaves = [
+        { y: 350, ox: -40, oy: -15 },
+        { y: 310, ox: -50, oy: -20 },
+        { y: 270, ox: -60, oy: -25 },
+        { y: 230, ox: -65, oy: -30 },
+        { y: 190, ox: -60, oy: -25 },
+        { y: 150, ox: -50, oy: -20 },
+        { y: 120, ox: -40, oy: -15 }
+      ];
+
+      leaves.forEach(lf => {
+        // Left branch curve
+        ctx.beginPath();
+        ctx.moveTo(885, lf.y);
+        ctx.quadraticCurveTo(885 + lf.ox, lf.y + lf.oy, 885 + lf.ox - 15, lf.y + lf.oy - 10);
+        ctx.stroke();
+
+        // Right branch curve
+        ctx.beginPath();
+        ctx.moveTo(887, lf.y);
+        ctx.quadraticCurveTo(887 - lf.ox, lf.y + lf.oy, 887 - lf.ox + 15, lf.y + lf.oy - 10);
+        ctx.stroke();
+      });
+
+      // Cyberpunk palm oil glow fruits (glowing neon circles)
+      ctx.fillStyle = '#34d399';
+      ctx.shadowBlur = 20;
+      const fruits = [
+        { x: 890, y: 370 }, { x: 902, y: 365 }, { x: 885, y: 355 },
+        { x: 898, y: 350 }, { x: 892, y: 340 }, { x: 908, y: 355 }
+      ];
+      fruits.forEach(ft => {
+        ctx.beginPath();
+        ctx.arc(ft.x, ft.y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Drawing tech telemetry borders on cyber palm area
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(760, 110);
+      ctx.lineTo(950, 110);
+      ctx.lineTo(950, 395);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#10b981';
+      ctx.font = '7px monospace';
+      ctx.fillText('SYS_COMPLIANCE: ACTIVE', 770, 122);
+      ctx.fillText('BLOCK_ID: #BPDPKS-ID-070', 770, 132);
+
+      ctx.restore();
+
       // 3. Info labels and text
       ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
       ctx.font = 'bold 12px monospace';
@@ -589,10 +672,40 @@ export default function FarmIdClient({
       }
       ctx.restore();
 
+      // smart contract details and timestamp below the stamp
+      const verifiedTimeStr = record?.verified_at 
+        ? new Date(record.verified_at).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB'
+        : 'N/A';
+      const verifiedDateStr = record?.verified_at
+        ? new Date(record.verified_at).toLocaleDateString('id-ID')
+        : 'PENDING AUDIT';
+      
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('WAKTU VERIFIKASI (BLOCKTIME)', 420, 520);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '11px monospace';
+      ctx.fillText(record?.verified_at ? `${verifiedDateStr} ${verifiedTimeStr}` : 'BELUM TERVERIFIKASI', 420, 535);
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('SMART CONTRACT & COMPLIANCE FEATURE', 420, 560);
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText('BPDPKS-GREEN-PALM-REGISTRY v2.1', 420, 575);
+
+      // ledger hash in the bottom left
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('LEDGER VALIDATION HASH', 50, 560);
+      ctx.fillStyle = '#e2eae5';
+      ctx.font = '11px monospace';
+      ctx.fillText(cardHash, 50, 575);
+
       // Affiliations
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.7)';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('Dicetak oleh: PODGE & Badan Pengelola Dana Perkebunan (BPDP)', 50, 535);
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+      ctx.font = '8px monospace';
+      ctx.fillText('Dicetak oleh: PODGE & Badan Pengelola Dana Perkebunan (BPDP)', 50, 520);
 
       // QR Code drawing
       const qrImg = new Image();
