@@ -26,6 +26,10 @@ type FarmerRecord = {
   area_hectare: string | number;
   commodity: string;
   harvest_status: string;
+  public_status: string;
+  public_live_at: string | null;
+  verification_status: string;
+  verification_note: string | null;
   public_note: string | null;
   is_claimed: boolean;
   claimed_at: string | null;
@@ -370,13 +374,22 @@ export default function FarmIdClient() {
                   <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">FarmID</p>
                   <p className="mt-1 break-all font-space text-2xl font-extrabold text-white">{record.farm_id}</p>
                 </div>
-                <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
-                  record.is_claimed
-                    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
-                    : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
-                }`}>
-                  {record.is_claimed ? 'Sudah Diklaim' : 'Belum Diklaim'}
-                </span>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                    record.public_status === 'live'
+                      ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
+                      : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
+                  }`}>
+                    {record.public_status === 'live' ? 'Live Publicly' : 'Draft Publik'}
+                  </span>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                    record.is_claimed
+                      ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
+                      : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
+                  }`}>
+                    {record.is_claimed ? 'Sudah Diklaim' : 'Belum Diklaim'}
+                  </span>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -386,6 +399,18 @@ export default function FarmIdClient() {
                 <Info label="Luas" value={`${record.area_hectare} ha`} />
                 <Info label="Komoditas" value={record.commodity} />
                 <Info label="Status Panen" value={record.harvest_status} />
+                <Info label="Status Publik" value={record.public_status === 'live' ? 'Live Publicly' : 'Draft Publik'} />
+                <Info
+                  label="Terakhir Publish"
+                  value={record.public_live_at ? new Date(record.public_live_at).toLocaleString('id-ID') : 'Belum dipublish'}
+                />
+              </div>
+              <div className="mt-3 rounded-lg border border-emerald-900/60 bg-black/20 p-4">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Catatan Governance</p>
+                <p className="mt-2 text-sm leading-6 text-emerald-50/80">
+                  Status publik FarmID dikelola langsung oleh petani melalui barcode private. Verifikasi admin
+                  untuk chain governance lain akan berjalan terpisah.
+                </p>
               </div>
               {record.public_note ? (
                 <div className="mt-3 rounded-lg border border-emerald-900/60 bg-black/20 p-4">
@@ -424,6 +449,9 @@ export default function FarmIdClient() {
                       <CheckCircle2 size={16} />
                       Perangkat ini punya akses update.
                     </div>
+                    <p className="mt-1 text-xs leading-5 text-emerald-100/75">
+                      Setelah klik update, data langsung live di link publik tanpa menunggu admin.
+                    </p>
                   </div>
                   <label className="block">
                     <span className="mb-1 block text-sm text-emerald-200/70">Status Panen Publik</span>

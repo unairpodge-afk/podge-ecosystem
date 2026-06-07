@@ -31,7 +31,12 @@ export async function POST(request: NextRequest) {
 
   const update = await query<FarmerIdRecord>(
     `UPDATE farmer_ids
-     SET harvest_status = $2, public_note = $3, updated_at = NOW()
+     SET
+      harvest_status = $2,
+      public_note = $3,
+      public_status = 'live',
+      public_live_at = COALESCE(public_live_at, NOW()),
+      updated_at = NOW()
      WHERE farm_id = $1
      RETURNING *`,
     [farmId, harvestStatus, publicNote],

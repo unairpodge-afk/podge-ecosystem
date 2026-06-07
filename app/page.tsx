@@ -66,6 +66,9 @@ export default async function MainLandingPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link href="/admin/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
+            ADMIN LOGIN
+          </Link>
           <Link href="/governance/farmid" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
             FARMID CLAIM
           </Link>

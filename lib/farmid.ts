@@ -11,6 +11,12 @@ export type FarmerIdRecord = {
   area_hectare: string | number;
   commodity: string;
   harvest_status: string;
+  public_status: string;
+  public_live_at: string | Date | null;
+  verification_status: string;
+  verified_at: string | Date | null;
+  verified_by: string | null;
+  verification_note: string | null;
   public_note: string | null;
   is_claimed: boolean;
   claimed_at: string | Date | null;
@@ -35,6 +41,12 @@ export async function ensureFarmerIdsTable() {
       area_hectare NUMERIC(12, 2) NOT NULL DEFAULT 0,
       commodity TEXT NOT NULL DEFAULT 'Kelapa Sawit',
       harvest_status TEXT NOT NULL DEFAULT 'Belum ada update panen',
+      public_status TEXT NOT NULL DEFAULT 'draft',
+      public_live_at TIMESTAMPTZ,
+      verification_status TEXT NOT NULL DEFAULT 'pending',
+      verified_at TIMESTAMPTZ,
+      verified_by UUID,
+      verification_note TEXT,
       public_note TEXT,
       is_claimed BOOLEAN NOT NULL DEFAULT false,
       claimed_at TIMESTAMPTZ,
@@ -42,6 +54,16 @@ export async function ensureFarmerIdsTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await query(`
+    ALTER TABLE farmer_ids
+      ADD COLUMN IF NOT EXISTS public_status TEXT NOT NULL DEFAULT 'draft',
+      ADD COLUMN IF NOT EXISTS public_live_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending',
+      ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS verified_by UUID,
+      ADD COLUMN IF NOT EXISTS verification_note TEXT
   `);
 }
 
