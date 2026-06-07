@@ -14,6 +14,13 @@ import {
   RefreshCcw,
   ShieldAlert,
   Sprout,
+  Camera,
+  Printer,
+  Trash2,
+  ArrowRight,
+  User,
+  Info as InfoIcon,
+  AlertCircle
 } from 'lucide-react';
 import type { PublicPodgeIdentityRecord } from '@/lib/identity';
 
@@ -86,6 +93,7 @@ export default function FarmIdClient() {
   const queryId = searchParams.get('id') || '';
   const queryToken = searchParams.get('token') || '';
   const queryMode = searchParams.get('mode') || '';
+  
   const [deviceKey, setDeviceKey] = useState('');
   const [record, setRecord] = useState<FarmerRecord | null>(null);
   const [privateToken, setPrivateToken] = useState(queryToken);
@@ -100,6 +108,19 @@ export default function FarmIdClient() {
   const [identityPrivateToken, setIdentityPrivateToken] = useState('');
   const [identityRecoveryCode, setIdentityRecoveryCode] = useState('');
 
+  // Live preview form states
+  const [formFarmerName, setFormFarmerName] = useState('');
+  const [formCooperativeName, setFormCooperativeName] = useState('');
+  const [formVillage, setFormVillage] = useState('');
+  const [formDistrict, setFormDistrict] = useState('');
+  const [formProvince, setFormProvince] = useState('');
+  const [formAreaHectare, setFormAreaHectare] = useState('');
+
+  // Photo upload state
+  const [photoUrl, setPhotoUrl] = useState<string>('');
+
+  const isClaimMode = queryMode === 'claim' && privateToken;
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       setDeviceKey(getDeviceKey());
@@ -113,33 +134,20 @@ export default function FarmIdClient() {
     if (!origin || !record) {
       return '';
     }
-
     return `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record.farm_id)}`;
   }, [origin, record]);
 
-  const privateLink = useMemo(() => {
-    if (!origin || !record || !privateToken) {
-      return '';
+  // Load photo from local storage based on active farm record
+  useEffect(() => {
+    if (record) {
+      const savedPhoto = localStorage.getItem(`podge:farmid:photo:${record.farm_id}`);
+      if (savedPhoto) {
+        setPhotoUrl(savedPhoto);
+      } else {
+        setPhotoUrl('');
+      }
     }
-
-    return `${origin}/governance/farmid?mode=claim&id=${encodeURIComponent(record.farm_id)}&token=${encodeURIComponent(privateToken)}`;
-  }, [origin, privateToken, record]);
-
-  const identityPrivateLink = useMemo(() => {
-    if (!origin || !identity || !identityPrivateToken) {
-      return '';
-    }
-
-    return `${origin}/identity/access?id=${encodeURIComponent(identity.public_code)}&token=${encodeURIComponent(identityPrivateToken)}`;
-  }, [identity, identityPrivateToken, origin]);
-
-  const identityPublicLink = useMemo(() => {
-    if (!origin || !identity) {
-      return '';
-    }
-
-    return `${origin}/identity/view?id=${encodeURIComponent(identity.public_code)}`;
-  }, [identity, origin]);
+  }, [record]);
 
   const readFarmId = useCallback(async (id: string, token = privateToken, activeDeviceKey = deviceKey) => {
     if (!id || !activeDeviceKey) {
@@ -164,6 +172,9 @@ export default function FarmIdClient() {
     setAccess(data.access || emptyAccess);
     setHarvestStatus(data.record.harvest_status);
     setPublicNote(data.record.public_note || '');
+    if (data.identity) {
+      setIdentity(data.identity);
+    }
   }, [deviceKey, privateToken]);
 
   useEffect(() => {
@@ -174,7 +185,6 @@ export default function FarmIdClient() {
 
       return () => cancelAnimationFrame(frame);
     }
-
     return undefined;
   }, [deviceKey, queryId, queryToken, readFarmId]);
 
@@ -207,7 +217,13 @@ export default function FarmIdClient() {
       setAccess(emptyAccess);
       setHarvestStatus(data.record.harvest_status);
       setPublicNote(data.record.public_note || '');
-      setStatus('FarmID dibuat. Simpan barcode private untuk petani, dan bagikan barcode publik untuk transparansi.');
+      
+      // Auto save photo if there is one already in state
+      if (photoUrl) {
+        localStorage.setItem(`podge:farmid:photo:${data.record.farm_id}`, photoUrl);
+      }
+
+      setStatus('Kartu Identitas Digital Petani (FarmID) berhasil dibuat.');
     } catch (generateError) {
       const message = generateError instanceof Error ? generateError.message : String(generateError);
       setError(`Gagal membuat FarmID: ${message}`);
@@ -285,185 +301,400 @@ export default function FarmIdClient() {
     setStatus(data.message || 'Data publik berhasil diperbarui.');
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setPhotoUrl(base64);
+        if (record) {
+          localStorage.setItem(`podge:farmid:photo:${record.farm_id}`, base64);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   async function copyText(value: string) {
     await navigator.clipboard.writeText(value);
-    setStatus('Link berhasil disalin.');
+    setStatus('Link verifikasi berhasil disalin.');
   }
 
-  const isClaimMode = queryMode === 'claim' && privateToken;
+  // Derive Display values for card (handles both live preview and loaded records)
+  const cardFarmerName = record ? record.farmer_name : (formFarmerName || 'NAMA PETANI');
+  const cardCooperativeName = record ? record.cooperative_name : (formCooperativeName || 'NAMA KOPERASI MITRA');
+  const cardAreaHectare = record ? record.area_hectare : (formAreaHectare || '0.00');
+  const cardVillage = record ? record.village : (formVillage || 'Nama Desa');
+  const cardDistrict = record ? record.district : (formDistrict || 'Kecamatan');
+  const cardProvince = record ? record.province : (formProvince || 'Provinsi');
+  const cardFarmId = record ? record.farm_id : 'PODGE-ID-FARM-XXXX';
 
   return (
     <div className="space-y-8">
+      {/* Page Header */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
             <Fingerprint size={14} />
-            FarmID Key Claiming
+            Kartu Identitas Petani Digital
           </div>
-          <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">Private-Public Farmer ID</h1>
+          <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">Sertifikasi & KTP Digital Petani</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
-            Buat satu barcode private untuk petani dan satu barcode publik untuk masyarakat. Tanpa login:
-            hak edit dikunci oleh token rahasia dan perangkat pertama yang melakukan klaim.
+            Membantu Bapak/Ibu petani sawit memiliki kartu identitas digital yang memuat data lokasi lahan, koperasi mitra, dan QR code pelacakan TBS legal berkelanjutan.
           </p>
         </div>
         <Link
-          href="/governance/traceability"
+          href="/dashboard"
           className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-sm font-bold text-emerald-50 transition hover:bg-emerald-950/60"
         >
-          Kembali ke Ledger
+          Kembali ke Dashboard
         </Link>
       </div>
 
-      {status ? (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          {status}
+      {status && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+          <span>{status}</span>
         </div>
-      ) : null}
+      )}
 
-      {error ? (
-        <div className="rounded-lg border border-red-500/35 bg-red-950/40 px-4 py-3 text-sm text-red-100">
-          {error}
+      {error && (
+        <div className="rounded-lg border border-red-500/35 bg-red-950/40 px-4 py-3 text-sm text-red-100 flex items-center gap-2">
+          <ShieldAlert size={16} className="text-red-400 shrink-0" />
+          <span>{error}</span>
         </div>
-      ) : null}
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="glass-panel rounded-lg p-6">
+      {/* Main Grid: Form on left, Card Visual & Controls on right */}
+      <div className="grid gap-8 xl:grid-cols-[1fr_1.1fr]">
+        
+        {/* Left Column: Register Form */}
+        <section className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-500 text-black">
               <Sprout size={22} />
             </div>
             <div>
-              <h2 className="font-space text-xl font-bold text-emerald-50">Generate ID Petani</h2>
-              <p className="text-xs text-emerald-200/55">Data dasar ini akan terlihat di halaman publik.</p>
+              <h2 className="font-space text-xl font-bold text-emerald-50">Daftarkan Lahan Petani</h2>
+              <p className="text-xs text-emerald-200/55">Isi data di bawah ini untuk dicetak langsung pada kartu.</p>
             </div>
           </div>
 
           <form onSubmit={generateFarmId} className="grid gap-4">
-            <Field label="Nama Petani" name="farmerName" placeholder="Misal: Siti Rahma" required />
-            <Field label="Koperasi / Kelompok" name="cooperativeName" placeholder="Misal: KUD Sawit Makmur" required />
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Nama Petani</span>
+              <input
+                type="text"
+                name="farmerName"
+                required
+                value={formFarmerName}
+                onChange={(e) => setFormFarmerName(e.target.value)}
+                placeholder="Misal: Siti Rahma"
+                className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Koperasi / Kelompok Tani Mitra</span>
+              <input
+                type="text"
+                name="cooperativeName"
+                required
+                value={formCooperativeName}
+                onChange={(e) => setFormCooperativeName(e.target.value)}
+                placeholder="Misal: KUD Sawit Makmur"
+                className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+              />
+            </label>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Desa" name="village" placeholder="Desa Sumber Sawit" required />
-              <Field label="Kabupaten" name="district" placeholder="Pelalawan" required />
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Desa</span>
+                <input
+                  type="text"
+                  name="village"
+                  required
+                  value={formVillage}
+                  onChange={(e) => setFormVillage(e.target.value)}
+                  placeholder="Misal: Sumber Sawit"
+                  className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Kecamatan / Kabupaten</span>
+                <input
+                  type="text"
+                  name="district"
+                  required
+                  value={formDistrict}
+                  onChange={(e) => setFormDistrict(e.target.value)}
+                  placeholder="Misal: Pelalawan"
+                  className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                />
+              </label>
             </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Provinsi" name="province" placeholder="Riau" required />
-              <Field label="Luas Lahan (ha)" name="areaHectare" type="number" step="0.01" placeholder="2.50" required />
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Provinsi</span>
+                <input
+                  type="text"
+                  name="province"
+                  required
+                  value={formProvince}
+                  onChange={(e) => setFormProvince(e.target.value)}
+                  placeholder="Misal: Riau"
+                  className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400">Luas Lahan Kebun (ha)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="areaHectare"
+                  required
+                  value={formAreaHectare}
+                  onChange={(e) => setFormAreaHectare(e.target.value)}
+                  placeholder="2.50"
+                  className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                />
+              </label>
             </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-extrabold text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black py-3.5 text-sm font-extrabold transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Memproses...' : 'Generate 2 Barcode FarmID'}
+              {loading ? 'Memproses Lahan...' : 'Cetak & Terbitkan Kartu Digital'}
             </button>
           </form>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <QrPanel
-            title="Barcode Private Petani"
-            description="Disimpan petani. Berisi token rahasia untuk klaim dan update data publik dari perangkat pertama."
-            icon={Lock}
-            link={privateLink}
-            tone="private"
-            onCopy={copyText}
-          />
-          <QrPanel
-            title="Barcode Publik Masyarakat"
-            description="Bisa ditempel di produk/dokumen. Hanya menampilkan data read-only untuk transparansi."
-            icon={Eye}
-            link={publicLink}
-            tone="public"
-            onCopy={copyText}
-          />
-        </section>
-      </div>
+        {/* Right Column: Interactive Digital Farmer ID Card Display */}
+        <section className="flex flex-col items-center justify-center space-y-6">
+          
+          {/* Print container styling */}
+          <div id="printable-farmer-card-section" className="w-full">
+            
+            {/* STYLISH ID CARD */}
+            <div className="w-full max-w-[500px] mx-auto bg-gradient-to-br from-[#06150d] via-[#020704] to-[#0c2415] border-2 border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden font-space transition-all duration-300 hover:border-emerald-500/50">
+              
+              {/* Cyber decoration lines */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600"></div>
+              <div className="absolute bottom-3 right-4 text-[9px] font-mono text-emerald-500/25 tracking-widest font-semibold">SECURE DIGITAL CARD</div>
 
-      {identity ? (
-        <section className="glass-panel rounded-lg p-6">
-          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
-                <KeyRound size={14} />
-                PODGE-ID Petani
+              {/* Header */}
+              <div className="flex justify-between items-start pb-4 border-b border-emerald-950/80">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-emerald-500 rounded-lg flex items-center justify-center font-bold text-black text-base shadow-[0_0_12px_rgba(16,185,129,0.4)]">
+                    P
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-white tracking-wider uppercase leading-none font-space">PODGE SAWIT</h4>
+                    <span className="text-[8px] font-mono text-emerald-400 tracking-widest uppercase">Ecosystem Identity</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-800/40 px-2.5 py-0.5 rounded-md uppercase">
+                    PETANI MANDIRI
+                  </span>
+                </div>
               </div>
-              <h2 className="mt-3 font-space text-xl font-bold text-emerald-50">Kartu Identitas Digital Bapak/Ibu Petani</h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
-                FarmID ini otomatis punya PODGE-ID universal. QR pribadi PODGE-ID disimpan oleh petani,
-                sedangkan QR publik bisa dibagikan untuk menunjukkan identitas tanpa membuka token rahasia.
+
+              {/* Card Body */}
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-[115px_1fr] gap-5 items-start">
+                
+                {/* Photo Section */}
+                <div className="flex flex-col items-center mx-auto sm:mx-0">
+                  <div className="relative h-32 w-28 bg-black/40 border border-emerald-500/25 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
+                    {photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoUrl} alt="Foto Petani" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="text-center p-3 text-emerald-500/35">
+                        <User size={40} className="mx-auto mb-1.5 opacity-60" />
+                        <span className="text-[8px] font-mono tracking-wider font-semibold">UNGGAH FOTO</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Farmer Information */}
+                <div className="space-y-3.5 text-xs text-left">
+                  <div>
+                    <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">NAMA LENGKAP PETANI</span>
+                    <span className="text-base font-extrabold text-white uppercase mt-0.5 block truncate leading-none">{cardFarmerName}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">KOPERASI MITRA</span>
+                      <span className="font-bold text-emerald-100 uppercase block truncate">{cardCooperativeName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">LUAS LAHAN</span>
+                      <span className="font-bold text-emerald-100 block truncate">{cardAreaHectare} Hektar</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">ALAMAT LAHAN KEBUN</span>
+                    <span className="text-emerald-100/90 block leading-tight font-medium">
+                      Desa {cardVillage}, Kec. {cardDistrict}, {cardProvince}
+                    </span>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-emerald-950/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">KODE PODGE-ID / FARM-ID</span>
+                      <span className="font-mono text-xs font-extrabold text-white tracking-widest uppercase block mt-0.5">{cardFarmId}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Footer with Single Verification Barcode */}
+              <div className="mt-6 pt-4 border-t border-emerald-950/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left text-[9px] text-emerald-400/50 font-mono leading-relaxed max-w-[280px]">
+                  <p>Scan barcode publik ini untuk memeriksa koordinat kebun, berat kiriman TBS, dan status verifikasi hukum secara publik.</p>
+                </div>
+                
+                <div className="bg-white p-2 rounded-xl border border-emerald-500/20 shrink-0 shadow-lg text-center">
+                  {record ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={qrUrl(publicLink)} alt="Public QR Code" className="h-24 w-24 mx-auto" />
+                  ) : (
+                    <div className="h-24 w-24 mx-auto bg-black/10 border border-emerald-950/20 rounded-lg flex items-center justify-center text-emerald-500/40">
+                      <QrCode size={34} className="opacity-40 animate-pulse" />
+                    </div>
+                  )}
+                  <span className="text-[7px] font-mono text-black font-bold tracking-widest block mt-1 uppercase">VERIFIED LAHAN</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* CARD CONTROLS (Only visible if record is created/loaded) */}
+          {record ? (
+            <div className="w-full max-w-[500px] flex flex-wrap gap-3 items-center justify-center bg-black/30 p-4 rounded-2xl border border-emerald-950/80">
+              
+              {/* Photo Upload Input */}
+              <label className="flex-1 min-w-[150px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition-all cursor-pointer shadow-md active:scale-95 text-center">
+                <Camera size={15} />
+                <span>{photoUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Delete Photo Button */}
+              {photoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoUrl('');
+                    localStorage.removeItem(`podge:farmid:photo:${record.farm_id}`);
+                  }}
+                  className="p-3 rounded-xl border border-red-950 bg-red-950/20 text-red-400 hover:bg-red-900/20 hover:text-red-200 transition"
+                  title="Hapus Foto"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
+
+              {/* Copy verification Link */}
+              <button
+                type="button"
+                onClick={() => copyText(publicLink)}
+                className="flex-1 min-w-[150px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+              >
+                <Copy size={15} />
+                <span>Salin Link Publik</span>
+              </button>
+
+              {/* Print Card */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+                title="Cetak/Simpan PDF Kartu"
+              >
+                <Printer size={15} />
+              </button>
+
+            </div>
+          ) : (
+            <div className="w-full max-w-[500px] p-4 rounded-xl border border-dashed border-emerald-950/80 bg-black/10 text-center text-xs text-emerald-300/40 flex items-center gap-2 justify-center">
+              <InfoIcon size={14} className="opacity-70" />
+              <span>Lakukan generate untuk memunculkan tombol upload foto dan cetak.</span>
+            </div>
+          )}
+
+          {/* Recovery Code display on fresh generate */}
+          {identityRecoveryCode && (
+            <div className="w-full max-w-[500px] rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs leading-5 text-yellow-100">
+              <p className="font-bold flex items-center gap-1.5 text-yellow-400 mb-1">
+                <AlertCircle size={14} /> Recovery Code (Podge ID Pemulihan):
+              </p>
+              <p className="mt-1 font-mono break-all text-yellow-50 bg-black/30 p-2.5 rounded-lg border border-yellow-900/30 font-bold select-all tracking-wider text-center">{identityRecoveryCode}</p>
+              <p className="text-[10px] text-yellow-300/60 mt-1.5 leading-normal">
+                Gunakan kode pemulihan di atas untuk mereset token rahasia Podge ID Anda jika berpindah browser atau HP. Jangan dibagikan ke orang lain.
               </p>
             </div>
-            <div className="rounded-lg border border-emerald-900/60 bg-black/25 p-3">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Public Code</p>
-              <p className="mt-1 break-all font-mono text-sm font-bold text-emerald-50">{identity.public_code}</p>
-            </div>
-          </div>
-
-          {identityRecoveryCode ? (
-            <div className="mb-5 rounded-lg border border-yellow-500/30 bg-yellow-950/25 p-4 text-sm leading-6 text-yellow-100/85">
-              <p className="font-bold">Recovery Code, simpan terpisah dari QR pribadi:</p>
-              <p className="mt-2 break-all font-mono text-yellow-50">{identityRecoveryCode}</p>
-            </div>
-          ) : null}
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <QrPanel
-              title="PODGE-ID Private QR"
-              description="Untuk masuk tanpa email. Simpan di HP petani atau cetak sebagai kartu pribadi."
-              icon={Lock}
-              link={identityPrivateLink}
-              tone="private"
-              onCopy={copyText}
-            />
-            <QrPanel
-              title="PODGE-ID Public QR"
-              description="Boleh dibagikan ke masyarakat, koperasi, atau mitra untuk melihat identitas publik."
-              icon={Eye}
-              link={identityPublicLink}
-              tone="public"
-              onCopy={copyText}
-            />
-          </div>
+          )}
         </section>
-      ) : null}
 
-      <section className="glass-panel rounded-lg p-6">
+      </div>
+
+      {/* Access and Governance Form (Only shown if loaded or claimed) */}
+      <section className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-space text-xl font-bold text-emerald-50">Status Klaim & Data Publik</h2>
+            <h2 className="font-space text-xl font-bold text-emerald-50">Status Klaim & Update Panen Publik</h2>
             <p className="mt-1 text-sm text-emerald-200/55">
-              Link publik selalu read-only. Fitur update hanya muncul saat token private valid dan perangkat ini adalah pengklaim pertama.
+              Kelola status panen Anda di halaman verifikasi publik melalui panel edit ini.
             </p>
           </div>
-          {record ? (
+          {record && (
             <button
               type="button"
               onClick={() => readFarmId(record.farm_id)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-700/60 px-4 py-2 text-sm font-bold text-emerald-50 transition hover:bg-emerald-950/60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 px-4 py-2.5 text-xs font-bold text-emerald-50 transition hover:bg-emerald-950/60"
             >
-              <RefreshCcw size={15} />
-              Refresh
+              <RefreshCcw size={14} />
+              Segarkan Data
             </button>
-          ) : null}
+          )}
         </div>
 
         {record ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-            <div className="rounded-lg border border-emerald-900/60 bg-black/25 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            
+            {/* View status parameters */}
+            <div className="rounded-xl border border-emerald-900/60 bg-black/25 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-emerald-950/80">
                 <div>
                   <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">FarmID</p>
-                  <p className="mt-1 break-all font-space text-2xl font-extrabold text-white">{record.farm_id}</p>
+                  <p className="mt-1 break-all font-mono text-sm font-extrabold text-white tracking-widest">{record.farm_id}</p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
-                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-mono font-bold uppercase ${
                     record.public_status === 'live'
                       ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
                       : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
                   }`}>
-                    {record.public_status === 'live' ? 'Live Publicly' : 'Draft Publik'}
+                    {record.public_status === 'live' ? 'Live Public' : 'Draft'}
                   </span>
-                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-mono font-bold uppercase ${
                     record.is_claimed
                       ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
                       : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
@@ -473,73 +704,65 @@ export default function FarmIdClient() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <Info label="Petani" value={record.farmer_name} />
-                <Info label="Koperasi" value={record.cooperative_name} />
-                <Info label="Lokasi" value={`${record.village}, ${record.district}, ${record.province}`} />
-                <Info label="Luas" value={`${record.area_hectare} ha`} />
-                <Info label="Komoditas" value={record.commodity} />
-                <Info label="Status Panen" value={record.harvest_status} />
-                <Info label="Status Publik" value={record.public_status === 'live' ? 'Live Publicly' : 'Draft Publik'} />
+              {/* Data elements */}
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 text-xs">
+                <Info label="Petani / Pemilik Lahan" value={record.farmer_name} />
+                <Info label="Koperasi Kelompok Tani" value={record.cooperative_name} />
+                <Info label="Alamat Kebun" value={`${record.village}, ${record.district}, ${record.province}`} />
+                <Info label="Total Luas Lahan" value={`${record.area_hectare} ha`} />
+                <Info label="Komoditas Utama" value={record.commodity} />
+                <Info label="Status Panen Saat Ini" value={record.harvest_status} />
                 <Info
                   label="Terakhir Publish"
-                  value={record.public_live_at ? new Date(record.public_live_at).toLocaleString('id-ID') : 'Belum dipublish'}
+                  value={record.public_live_at ? new Date(record.public_live_at).toLocaleString('id-ID') : 'Belum dipublikasikan'}
+                />
+                <Info
+                  label="Status Verifikasi Audit"
+                  value={record.verification_status.toUpperCase()}
                 />
               </div>
-              <div className="mt-3 rounded-lg border border-emerald-900/60 bg-black/20 p-4">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Catatan Governance</p>
-                <p className="mt-2 text-sm leading-6 text-emerald-50/80">
-                  Status publik FarmID dikelola langsung oleh petani melalui barcode private. Verifikasi admin
-                  untuk chain governance lain akan berjalan terpisah.
-                </p>
-              </div>
-              {record.public_note ? (
-                <div className="mt-3 rounded-lg border border-emerald-900/60 bg-black/20 p-4">
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Catatan Publik</p>
-                  <p className="mt-2 text-sm leading-6 text-emerald-50/85">{record.public_note}</p>
-                </div>
-              ) : null}
             </div>
 
-            <div className="rounded-lg border border-emerald-900/60 bg-black/25 p-5">
+            {/* Private Controls Form */}
+            <div className="rounded-xl border border-emerald-900/60 bg-black/25 p-5">
               <div className="mb-4 flex items-start gap-3">
-                <KeyRound className="mt-0.5 text-emerald-300" size={20} />
+                <KeyRound className="mt-0.5 text-emerald-300 shrink-0" size={20} />
                 <div>
-                  <h3 className="font-space text-lg font-bold text-emerald-50">Akses Private</h3>
-                  <p className="text-sm leading-6 text-emerald-200/55">
-                    Token private tidak disimpan di browser publik. Perangkat pertama yang klaim akan menyimpan kunci lokal.
+                  <h3 className="font-space text-base font-bold text-emerald-50">Pengaturan Akses Edit</h3>
+                  <p className="text-[11px] leading-relaxed text-emerald-200/55">
+                    Hanya perangkat pengklaim pertama dengan token yang sah yang diperbolehkan mengubah status panen.
                   </p>
                 </div>
               </div>
 
-              {isClaimMode && access.canClaim ? (
+              {isClaimMode && access.canClaim && (
                 <button
                   type="button"
                   onClick={claimFarmId}
                   disabled={loading}
-                  className="mb-4 w-full rounded-lg bg-emerald-500 px-4 py-3 text-sm font-extrabold text-black transition hover:bg-emerald-400 disabled:opacity-60"
+                  className="mb-4 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black py-3 text-xs font-bold transition shadow-md"
                 >
-                  Klaim FarmID di Perangkat Ini
+                  Klaim Hak Milik di HP/Browser Ini
                 </button>
-              ) : null}
+              )}
 
               {access.canEdit ? (
                 <form onSubmit={updateFarmId} className="space-y-4">
-                  <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3 text-sm text-emerald-100">
-                    <div className="flex items-center gap-2 font-bold">
-                      <CheckCircle2 size={16} />
-                      Perangkat ini punya akses update.
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-emerald-100/75">
-                      Setelah klik update, data langsung live di link publik tanpa menunggu admin.
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 size={13} /> Akses Tulis Terverifikasi.
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-emerald-200/60">
+                      Anda berhak melakukan perubahan panen secara langsung ke publik.
                     </p>
                   </div>
-                  <label className="block">
-                    <span className="mb-1 block text-sm text-emerald-200/70">Status Panen Publik</span>
+                  
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-emerald-200/70 font-semibold">Ubah Status Panen Anda</span>
                     <select
                       value={harvestStatus}
                       onChange={(event) => setHarvestStatus(event.target.value)}
-                      className="w-full rounded-md border border-emerald-900/70 bg-black/40 p-2 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                      className="w-full rounded-lg border border-emerald-900/70 bg-black/40 p-2.5 text-xs text-emerald-50 outline-none transition focus:border-emerald-500"
                     >
                       <option>Belum ada update panen</option>
                       <option>Siap Panen</option>
@@ -548,40 +771,43 @@ export default function FarmIdClient() {
                       <option>Terverifikasi</option>
                     </select>
                   </label>
-                  <label className="block">
-                    <span className="mb-1 block text-sm text-emerald-200/70">Catatan Publik</span>
+                  
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-emerald-200/70 font-semibold">Catatan Tambahan Panen</span>
                     <textarea
                       value={publicNote}
                       onChange={(event) => setPublicNote(event.target.value)}
-                      rows={4}
-                      className="w-full rounded-md border border-emerald-900/70 bg-black/40 p-2 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
-                      placeholder="Contoh: Panen dijadwalkan minggu kedua, siap diverifikasi koperasi."
+                      rows={3}
+                      className="w-full rounded-lg border border-emerald-900/70 bg-black/40 p-2.5 text-xs text-emerald-50 outline-none transition focus:border-emerald-500"
+                      placeholder="Contoh: Sudah panen 2 ton TBS, sedang menunggu truk koperasi."
                     />
                   </label>
+                  
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full rounded-lg bg-emerald-500 px-4 py-3 text-sm font-extrabold text-black transition hover:bg-emerald-400 disabled:opacity-60"
+                    className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black py-2.5 text-xs font-bold transition"
                   >
-                    Update Data Publik
+                    Simpan Perubahan Publik
                   </button>
                 </form>
               ) : (
-                <div className="rounded-lg border border-yellow-500/25 bg-yellow-950/25 p-4 text-sm leading-6 text-yellow-100/85">
-                  <div className="mb-2 flex items-center gap-2 font-bold">
-                    <ShieldAlert size={16} />
-                    Mode publik / akses terbatas
+                <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs leading-5 text-yellow-200/80">
+                  <div className="mb-1 flex items-center gap-1.5 font-bold text-yellow-400">
+                    <ShieldAlert size={14} />
+                    Akses Tulis Dikunci
                   </div>
                   {record.is_claimed
-                    ? 'FarmID ini sudah diklaim. Tanpa perangkat pertama dan token private, halaman hanya bisa melihat data publik.'
-                    : 'FarmID belum diklaim. Scan barcode private di HP petani untuk membuka tombol klaim.'}
+                    ? 'FarmID ini sudah diklaim di perangkat lain. Anda tidak bisa mengedit data publik ini.'
+                    : 'Gunakan barcode private di HP pemilik lahan untuk membuktikan akses klaim edit.'}
                 </div>
               )}
             </div>
+
           </div>
         ) : (
-          <div className="rounded-lg border border-emerald-900/60 bg-black/25 p-8 text-center text-sm text-emerald-200/60">
-            Generate FarmID baru atau buka link barcode untuk melihat status klaim.
+          <div className="rounded-xl border border-dashed border-emerald-900/50 bg-black/20 p-8 text-center text-xs text-emerald-300/40">
+            Daftarkan lahan baru di atas untuk memantau status klaim dan mengedit status panen.
           </div>
         )}
       </section>
@@ -589,101 +815,11 @@ export default function FarmIdClient() {
   );
 }
 
-function Field({
-  label,
-  name,
-  placeholder,
-  type = 'text',
-  step,
-  required,
-}: {
-  label: string;
-  name: string;
-  placeholder: string;
-  type?: string;
-  step?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm text-emerald-200/70">{label}</span>
-      <input
-        type={type}
-        step={step}
-        name={name}
-        required={required}
-        className="w-full rounded-md border border-emerald-900/70 bg-black/40 p-2 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
-        placeholder={placeholder}
-      />
-    </label>
-  );
-}
-
-function QrPanel({
-  title,
-  description,
-  icon: Icon,
-  link,
-  tone,
-  onCopy,
-}: {
-  title: string;
-  description: string;
-  icon: typeof Lock;
-  link: string;
-  tone: 'private' | 'public';
-  onCopy: (value: string) => void;
-}) {
-  const badgeClass = tone === 'private'
-    ? 'border-yellow-400/35 bg-yellow-500/10 text-yellow-200'
-    : 'border-emerald-400/35 bg-emerald-500/10 text-emerald-200';
-
-  return (
-    <article className="glass-panel rounded-lg p-6">
-      <div className="mb-4 flex items-start gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-lg border ${badgeClass}`}>
-          <Icon size={21} />
-        </div>
-        <div>
-          <h2 className="font-space text-lg font-bold text-emerald-50">{title}</h2>
-          <p className="mt-1 text-sm leading-6 text-emerald-200/55">{description}</p>
-        </div>
-      </div>
-      {link ? (
-        <>
-          <div className="rounded-lg border border-emerald-900/70 bg-emerald-50 p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl(link)} alt={`QR ${title}`} className="mx-auto h-56 w-56" />
-          </div>
-          <div className="mt-4 rounded-lg border border-emerald-900/55 bg-black/25 p-3">
-            <p className="break-all font-mono text-[11px] leading-5 text-emerald-100/65">{link}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onCopy(link)}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-700/60 px-4 py-2 text-sm font-bold text-emerald-50 transition hover:bg-emerald-950/60"
-          >
-            <Copy size={15} />
-            Salin Link
-          </button>
-        </>
-      ) : (
-        <div className="flex h-80 items-center justify-center rounded-lg border border-dashed border-emerald-900/70 bg-black/20 text-center text-sm text-emerald-200/45">
-          <div>
-            <QrCode className="mx-auto mb-3 text-emerald-700" size={28} />
-            QR muncul setelah FarmID dibuat.
-          </div>
-        </div>
-      )}
-    </article>
-  );
-}
-
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-emerald-900/60 bg-black/20 p-3">
-      <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-emerald-50">{value}</p>
+    <div className="rounded-xl border border-emerald-900/50 bg-black/35 p-3 flex flex-col justify-center">
+      <p className="text-[9px] font-mono uppercase tracking-widest text-emerald-400/60 font-semibold">{label}</p>
+      <p className="mt-1 text-xs font-bold text-emerald-50 truncate">{value}</p>
     </div>
   );
 }
