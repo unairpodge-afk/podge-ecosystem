@@ -45,6 +45,13 @@ export default function OnboardingWizard({ identity }: { identity: any }) {
   const [plannedInvestment, setPlannedInvestment] = useState('100000000'); // 100M
   const [focus, setFocus] = useState('biogas');
 
+  // Format Rupiah helper
+  const formatRupiah = (val: string) => {
+    const num = parseInt(val.replace(/\D/g, ''), 10);
+    if (isNaN(num)) return 'Rp 0';
+    return 'Rp ' + num.toLocaleString('id-ID');
+  };
+
   if (!isOpen) return null;
 
   // Auto-fill realistic mock values for easy onboarding
@@ -267,6 +274,9 @@ export default function OnboardingWizard({ identity }: { identity: any }) {
                 <label className="block text-xs font-semibold text-emerald-400">
                   RENCANA ALOKASI DANA INVESTASI (RP)
                   <input required type="number" value={plannedInvestment} onChange={e => setPlannedInvestment(e.target.value)} placeholder="Contoh: 100000000" className="w-full bg-black/40 border border-emerald-900/60 rounded-xl p-3 text-xs text-white outline-none mt-1.5 focus:border-emerald-500" />
+                  <span className="block mt-1.5 text-emerald-400/70 font-mono text-[11px]">
+                    ≈ {formatRupiah(plannedInvestment)}
+                  </span>
                 </label>
                 <div className="space-y-2">
                   <span className="text-xs font-semibold text-emerald-400">FOKUS INVESTASI UTAMA</span>

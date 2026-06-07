@@ -17,7 +17,7 @@ export default async function CompliancePage() {
 
   try {
     const dbResult = await query<ComplianceRecord>(
-      "SELECT * FROM compliance_evaluations WHERE company_name IN ('PT Borneo Palm Energy', 'PT Riau Agromakmur', 'PT Sumatera Palm Lestari') OR id > 3 ORDER BY audit_date DESC"
+      "SELECT * FROM compliance_evaluations ORDER BY audit_date DESC LIMIT 50"
     );
     records = dbResult.rows;
   } catch (e) {

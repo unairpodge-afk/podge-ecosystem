@@ -111,7 +111,8 @@ export default async function DashboardPage() {
       coop: !!farmRecord?.cooperative_name
     };
     completedChecks = Object.values(checklist).filter(Boolean).length;
-    esgScore = Math.round((completedChecks / 4) * 100);
+    // Weighted ESG score: Geofence 35pts, STDB 30pts, SPPL 20pts, Koperasi 15pts
+    esgScore = (checklist.geofence ? 35 : 0) + (checklist.stdb ? 30 : 0) + (checklist.sppl ? 20 : 0) + (checklist.coop ? 15 : 0);
   } else {
     // 2. Fetch global statistics for admin/company/investor dashboards
     try {
@@ -178,9 +179,8 @@ export default async function DashboardPage() {
           );
           if (compRes.rows.length > 0) {
             companyComplianceRate = Number(compRes.rows[0].audit_score);
-          } else if (hasData) {
-            companyComplianceRate = 85.0; // Default initial compliance score for custom company
           }
+          // No default score — 0 means genuinely not yet audited
         } catch (err) {
           console.error('Gagal mengambil data compliance perusahaan:', err);
         }
@@ -200,6 +200,25 @@ export default async function DashboardPage() {
       }
     }
   }
+
+  // Contextual next-action info for each role
+  const farmerNextAction = !farmRecord
+    ? { msg: 'Daftarkan lahan sawit Anda untuk mulai mendapat premi harga TBS.', href: '/governance/farmid', cta: 'Klaim FarmID Sekarang →' }
+    : totalLogsCount === 0
+    ? { msg: 'FarmID sudah aktif! Saatnya catat kiriman pertama buah sawit Anda.', href: '/governance/traceability', cta: 'Catat Kiriman TBS →' }
+    : esgScore < 75
+    ? { msg: `Skor ESG Anda ${esgScore}%. Penuhi syarat sertifikasi untuk buka akses replanting.`, href: '/governance/farmid', cta: 'Lengkapi Data Lahan →' }
+    : null;
+
+  const companyNextAction = companyComplianceRate === 0
+    ? { msg: 'Perusahaan Anda belum diaudit ESG. Ajukan evaluasi pertama untuk membuka fitur Green Sukuk.', href: '/governance/compliance', cta: 'Mulai Audit ESG →' }
+    : companyBatchCount === 0
+    ? { msg: 'Belum ada batch TBS yang diterima. Verifikasi pengiriman TBS pertama dari mitra petani.', href: '/governance/traceability', cta: 'Validasi Batch TBS →' }
+    : null;
+
+  const investorNextAction = { msg: 'Mulai perjalanan belajar sawit Anda. Selesaikan modul dan raih sertifikat digital.', href: '/dashboard', cta: 'Lanjut Belajar →' };
+
+  const nextAction = role === 'farmer' ? farmerNextAction : role === 'company' ? companyNextAction : investorNextAction;
 
   return (
     <div className="space-y-8">
@@ -243,6 +262,36 @@ export default async function DashboardPage() {
           <span className="text-xs font-mono text-emerald-400/80">Sesi Aktif Aman</span>
         </div>
       </div>
+
+      {/* Next Action Contextual Banner */}
+      {nextAction && (
+        <div className={`rounded-xl px-5 py-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          role === 'farmer' ? 'bg-emerald-950/30 border-emerald-500/25'
+          : role === 'company' ? 'bg-blue-950/30 border-blue-500/25'
+          : 'bg-amber-950/30 border-amber-500/25'
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className={`text-lg mt-0.5 ${
+              role === 'farmer' ? 'text-emerald-400' : role === 'company' ? 'text-blue-400' : 'text-amber-400'
+            }`}>💡</span>
+            <p className={`text-sm font-medium ${
+              role === 'farmer' ? 'text-emerald-100/85' : role === 'company' ? 'text-blue-100/85' : 'text-amber-100/85'
+            }`}>
+              {nextAction.msg}
+            </p>
+          </div>
+          <Link
+            href={nextAction.href}
+            className={`shrink-0 text-xs font-bold px-4 py-2 rounded-lg transition whitespace-nowrap ${
+              role === 'farmer' ? 'bg-emerald-500 hover:bg-emerald-400 text-black'
+              : role === 'company' ? 'bg-blue-500 hover:bg-blue-400 text-black'
+              : 'bg-amber-500 hover:bg-amber-400 text-black'
+            }`}
+          >
+            {nextAction.cta}
+          </Link>
+        </div>
+      )}
 
       {/* Role-Specific Content */}
       {role === 'farmer' && (

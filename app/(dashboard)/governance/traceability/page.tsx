@@ -29,7 +29,11 @@ export default async function TraceabilityPage() {
   async function addTraceabilityLog(formData: FormData) {
     'use server';
 
-    const batchId = formData.get('batch_id') as string;
+    // Auto-generate Batch ID — farmers should not have to invent this
+    const year = new Date().getFullYear();
+    const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const batchId = `BATCH-PODGE-${year}-${randomSuffix}`;
+    
     const farmerName = formData.get('farmer_name') as string;
     const tbsWeightKg = Number(formData.get('tbs_weight_kg'));
     const pksDestination = formData.get('pks_destination') as string;
@@ -109,11 +113,6 @@ export default async function TraceabilityPage() {
 
         <form action={addTraceabilityLog} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <label className="text-sm text-emerald-200/70 mb-1">Batch ID</label>
-            <input type="text" name="batch_id" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 outline-none transition focus:border-emerald-500" placeholder="Misal: BATCH-2026-003" />
-          </div>
-
-          <div className="flex flex-col">
             <label className="text-sm text-emerald-200/70 mb-1">Nama Petani / Koperasi</label>
             <input type="text" name="farmer_name" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 outline-none transition focus:border-emerald-500" placeholder="Misal: Kelompok Tani Sawit Jaya" />
           </div>
@@ -128,7 +127,12 @@ export default async function TraceabilityPage() {
             <input type="text" name="pks_destination" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 outline-none transition focus:border-emerald-500" placeholder="Misal: PKS PT Aura Sawit" />
           </div>
 
-
+          <div className="flex flex-col justify-end">
+            <div className="rounded-lg border border-emerald-900/40 bg-emerald-950/30 p-3 text-xs text-emerald-300/70">
+              <span className="font-mono font-semibold text-emerald-400 block mb-1">ℹ️ Batch ID otomatis</span>
+              ID unik batch akan digenerate otomatis oleh sistem saat data dikirim (format: BATCH-PODGE-&#123;tahun&#125;-XXXXXX).
+            </div>
+          </div>
 
           <div className="md:col-span-2 mt-2">
             <button type="submit" className="w-full bg-emerald-500 text-black font-bold py-2.5 px-4 rounded-md hover:bg-emerald-400 transition-colors shadow-[0_0_20px_rgba(16,185,129,0.25)]">

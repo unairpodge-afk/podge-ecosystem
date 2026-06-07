@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -17,7 +17,8 @@ import {
   BookMarked,
   RotateCcw,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Coins
 } from 'lucide-react';
 
 interface Question {
@@ -78,28 +79,40 @@ const glossaryTerms = [
 
 export default function InvestorOverview() {
   // Simulator State
-  const [landArea, setLandArea] = useState<number>(5); // Default 5 Hectares
+  const [landArea, setLandArea] = useState<number>(5);
   const [soilQuality, setSoilQuality] = useState<'prime' | 'standard' | 'peat'>('prime');
 
-  // Dynamic Learning Platform States
-  const [completedModules, setCompletedModules] = useState<number>(2);
-  const [points, setPoints] = useState<number>(850);
-  const [certs, setCerts] = useState([
-    {
-      code: 'CERT-AGR-RIAU-041',
-      name: 'Dasar Agronomi & Budidaya Kebun Sawit Mandiri',
-      date: '15 Mei 2026',
-      score: '92 / 100',
-      status: 'Verified & Active'
-    },
-    {
-      code: 'CERT-ESG-EUDR-108',
-      name: 'Kepatuhan Deforestasi & Standar EUDR Dasar',
-      date: '02 Juni 2026',
-      score: '88 / 100',
-      status: 'Verified & Active'
-    }
-  ]);
+  // Learning progress — persisted to localStorage
+  const [completedModules, setCompletedModules] = useState<number>(0);
+  const [points, setPoints] = useState<number>(0);
+  const [certs, setCerts] = useState<Array<{code: string; name: string; date: string; score: string; status: string}>>([]);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('podge:investor:progress');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setCompletedModules(parsed.completedModules ?? 0);
+        setPoints(parsed.points ?? 0);
+        setCerts(parsed.certs ?? []);
+      }
+    } catch {}
+    setProgressLoaded(true);
+  }, []);
+
+  // Save to localStorage whenever progress changes (after initial load)
+  useEffect(() => {
+    if (!progressLoaded) return;
+    try {
+      localStorage.setItem('podge:investor:progress', JSON.stringify({
+        completedModules,
+        points,
+        certs,
+      }));
+    } catch {}
+  }, [completedModules, points, certs, progressLoaded]);
 
   // Quiz Engine State
   const [quizStarted, setQuizStarted] = useState(false);
@@ -735,7 +748,7 @@ export default function InvestorOverview() {
 
           </div>
 
-          {/* Definition Viewer Box */}
+        {/* Definition Viewer Box */}
           {selectedTermData && (
             <div className="mt-4 p-4 rounded-xl bg-emerald-950/15 border border-emerald-900/30 space-y-1.5 transition-all">
               <div className="flex items-center justify-between">
@@ -775,7 +788,7 @@ export default function InvestorOverview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-950/40 font-medium">
-              {certs.map(c => (
+              {certs.length > 0 ? certs.map(c => (
                 <tr key={c.code} className="hover:bg-emerald-950/5 transition-colors">
                   <td className="p-4 font-mono text-white">{c.code}</td>
                   <td className="p-4 text-emerald-100">{c.name}</td>
@@ -787,10 +800,38 @@ export default function InvestorOverview() {
                     </span>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-sm text-emerald-300/50">
+                    <GraduationCap size={28} className="mx-auto mb-2 text-amber-400/40" />
+                    <p>Belum ada sertifikat. Selesaikan kuis di atas untuk mendapat sertifikat pertama Anda!</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* SECTION 5: BRIDGE TO GREEN SUKUK PORTFOLIO */}
+      <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/25 via-black/30 to-emerald-950/20 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Coins size={18} className="text-amber-400" />
+            <h4 className="text-base font-bold text-white font-space">Siap Investasi di Proyek Sawit Hijau?</h4>
+          </div>
+          <p className="text-xs text-emerald-200/60 max-w-sm leading-relaxed">
+            Setelah memahami ekosistem sawit berkelanjutan, jelajahi portofolio Green Sukuk — instrumen investasi syariah yang mendanai replanting dan biogas POME.
+          </p>
+        </div>
+        <a
+          href="/value-creation/green-sukuk"
+          className="shrink-0 inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-5 py-3 rounded-xl transition shadow-[0_0_20px_rgba(245,158,11,0.25)]"
+        >
+          <Coins size={14} />
+          Lihat Proyek Sukuk
+          <ArrowRight size={14} />
+        </a>
       </div>
 
     </div>
