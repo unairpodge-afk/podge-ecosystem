@@ -13,8 +13,11 @@ import {
   Mail,
   MessageSquare,
   AlertCircle,
+  UploadCloud,
+  Loader2,
 } from 'lucide-react';
 import type { PublicPodgeIdentityRecord } from '@/lib/identity';
+import jsQR from 'jsqr';
 
 type AccessResult = {
   identity?: PublicPodgeIdentityRecord;
@@ -50,6 +53,39 @@ function identityTypeLabel(type: string) {
   return labels[type] || type;
 }
 
+function parseQrContent(text: string): { publicCode?: string; token?: string; isPrivate?: boolean } {
+  try {
+    const url = new URL(text);
+    // Case 1: Private Access Link
+    // e.g., /identity/access?id=PODGE-FARM-2026-XXXX&token=xxxxxx
+    if (url.searchParams.has('id') && url.searchParams.has('token')) {
+      return {
+        publicCode: url.searchParams.get('id') || undefined,
+        token: url.searchParams.get('token') || undefined,
+        isPrivate: true,
+      };
+    }
+    // Case 2: Public Farm ID link or Public Identity view link
+    // e.g., /governance/farmid?mode=view&id=PODGE-FARM-2026-XXXX or /identity/view?id=PODGE-ID-FARM-XXXX
+    if (url.searchParams.has('id')) {
+      return {
+        publicCode: url.searchParams.get('id') || undefined,
+        isPrivate: false,
+      };
+    }
+  } catch {
+    // If it's not a URL, it might be a raw code or token.
+    const trimmed = text.trim();
+    if (trimmed.startsWith('PODGE-')) {
+      return { publicCode: trimmed, isPrivate: false };
+    }
+    if (trimmed.length > 20) {
+      return { token: trimmed, isPrivate: true };
+    }
+  }
+  return {};
+}
+
 export default function IdentityAccessClient() {
   const searchParams = useSearchParams();
   const queryId = searchParams.get('id') || '';
@@ -67,6 +103,11 @@ export default function IdentityAccessClient() {
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoveryResult, setRecoveryResult] = useState<AccessResult | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
+
+  // QR Upload Scanner State
+  const [qrScanning, setQrScanning] = useState(false);
+  const [qrMessage, setQrMessage] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setDeviceKey(getDeviceKey()));
@@ -86,6 +127,62 @@ export default function IdentityAccessClient() {
     setLoading(false);
     setResult(data);
   }, [deviceKey, publicCode, token]);
+
+  const handleQrUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setQrScanning(true);
+    setQrMessage(null);
+    setQrError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setQrError('Gagal memproses gambar (canvas context tidak tersedia)');
+          setQrScanning(false);
+          return;
+        }
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        try {
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            const parsed = parseQrContent(code.data);
+            if (parsed.publicCode && parsed.token) {
+              setPublicCode(parsed.publicCode);
+              setToken(parsed.token);
+              setQrMessage('Barcode Pribadi (Barcode 1) berhasil diverifikasi. Sedang masuk...');
+              void accessIdentity(parsed.publicCode, parsed.token);
+            } else if (parsed.publicCode) {
+              setPublicCode(parsed.publicCode);
+              setQrMessage('Barcode Publik (Barcode 2) terdeteksi. Silakan masukkan Private Token Anda secara manual.');
+            } else {
+              setQrError('QR Code terdeteksi tetapi tidak berisi format PODGE-ID yang didukung.');
+            }
+          } else {
+            setQrError('Tidak dapat mendeteksi Barcode atau QR Code yang valid. Pastikan gambar jelas dan tidak terpotong.');
+          }
+        } catch {
+          setQrError('Terjadi kesalahan saat membaca piksel gambar.');
+        } finally {
+          setQrScanning(false);
+        }
+      };
+      img.onerror = () => {
+        setQrError('Gagal memuat file sebagai gambar.');
+        setQrScanning(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, [accessIdentity]);
 
   useEffect(() => {
     if (queryId && queryToken && deviceKey) {
@@ -231,6 +328,46 @@ export default function IdentityAccessClient() {
                       <p className="text-xs text-emerald-200/55">Masukkan Farm ID atau Public Code beserta token.</p>
                     </div>
                   </div>
+
+                  {/* File Upload QR Code Scanner */}
+                  <div className="mb-5 p-4 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-950/20 text-center relative transition duration-300 hover:border-emerald-500/40 hover:bg-emerald-950/35">
+                    <label className="cursor-pointer block">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        {qrScanning ? (
+                          <Loader2 className="text-emerald-400 animate-spin" size={28} />
+                        ) : (
+                          <UploadCloud className="text-emerald-400" size={28} />
+                        )}
+                        <span className="text-xs font-bold text-emerald-100">
+                          {qrScanning ? 'Membaca Barcode...' : 'Unggah Barcode / QR Kartu Digital'}
+                        </span>
+                        <span className="text-[10px] text-emerald-400/50">
+                          Pilih atau seret screenshot/gambar QR Pribadi (Barcode 1) untuk masuk otomatis.
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleQrUpload}
+                        disabled={qrScanning}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {qrMessage && (
+                    <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200 flex items-center gap-2">
+                      <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
+                      <span>{qrMessage}</span>
+                    </div>
+                  )}
+
+                  {qrError && (
+                    <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-950/20 p-3 text-xs text-yellow-200 flex items-center gap-2">
+                      <AlertCircle size={14} className="shrink-0 text-yellow-400" />
+                      <span>{qrError}</span>
+                    </div>
+                  )}
 
                   {result?.message && (
                     <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">

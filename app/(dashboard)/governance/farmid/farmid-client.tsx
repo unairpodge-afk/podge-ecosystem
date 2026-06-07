@@ -1241,6 +1241,93 @@ export default function FarmIdClient({
 
       </div>
 
+      {/* Tutorial Barcode Anggota */}
+      <section className="glass-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/5 p-6 md:p-8 relative overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.5)] mt-4">
+        {/* Subtle background glow */}
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/5 blur-[100px] pointer-events-none" />
+        
+        <div className="flex items-center gap-3 border-b border-emerald-950 pb-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <QrCode size={24} />
+          </div>
+          <div>
+            <h2 className="font-space text-xl font-extrabold text-white">Panduan Barcode & Keterlacakan Anggota</h2>
+            <p className="text-xs text-emerald-400/70 mt-0.5">Langkah operasional penggunaan Kartu Digital Petani PODGE</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-3">
+          {/* Step 1 */}
+          <div className="space-y-3 p-4 rounded-xl border border-emerald-900/30 bg-black/25 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">01</span>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Barcode 1: Simpan Token Akses</h3>
+              </div>
+              <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
+                Barcode 1 adalah QR Code Akses Pribadi (Private QR) Anda. Harap <strong>simpan/unduh barcode ini terlebih dahulu</strong>. Barcode ini digunakan untuk masuk (login) kembali ke dashboard Anda dari perangkat manapun dengan aman tanpa password. Jangan dibagikan ke orang lain!
+              </p>
+            </div>
+            {privateToken ? (
+              <div className="pt-4 flex flex-col items-center border-t border-emerald-950/80 mt-4">
+                <div className="bg-white p-1.5 rounded-lg shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrUrl(`${origin}/identity/access?id=${encodeURIComponent(record?.farm_id || cardFarmId)}&token=${encodeURIComponent(privateToken)}`)} alt="Barcode 1 - Private QR" className="h-28 w-28" />
+                </div>
+                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider">BARCODE 1 (PRIVATE QR)</span>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-yellow-300/70 italic leading-normal">
+                💡 Gambar Barcode 1 tidak tampil karena token rahasia tidak disimpan di server demi keamanan. Anda dapat melihat Barcode 1 Anda kapan saja di Dashboard Utama melalui menu <strong>&quot;Kelola Token Akses&quot;</strong>.
+              </div>
+            )}
+          </div>
+
+          {/* Step 2 */}
+          <div className="space-y-3 p-4 rounded-xl border border-emerald-900/30 bg-black/25 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">02</span>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Barcode 2: Untuk Masyarakat & PKS</h3>
+              </div>
+              <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
+                Barcode 2 adalah QR Code Publik yang dicetak di kartu digital Anda. Bagikan barcode ini kepada masyarakat, koperasi, atau Pabrik Kelapa Sawit (PKS) agar mereka dapat <strong>melacak asal-usul kelapa sawit</strong>, data kebun, dan keabsahan dokumen (KYC) Anda.
+              </p>
+            </div>
+            {record?.farm_id || cardFarmId ? (
+              <div className="pt-4 flex flex-col items-center border-t border-emerald-950/80 mt-4">
+                <div className="bg-white p-1.5 rounded-lg shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrUrl(publicLink || `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record?.farm_id || cardFarmId)}`)} alt="Barcode 2 - Public QR" className="h-28 w-28" />
+                </div>
+                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider">BARCODE 2 (PUBLIC QR)</span>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-400/50 italic text-center">
+                Belum ada data Farm ID untuk menampilkan Barcode 2.
+              </div>
+            )}
+          </div>
+
+          {/* Step 3 */}
+          <div className="space-y-3 p-4 rounded-xl border border-emerald-900/30 bg-black/25 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">03</span>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Status Panen & Keterlacakan</h3>
+              </div>
+              <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
+                Gunakan fitur <strong>Status Panen</strong> di bawah ini untuk memperbarui status sawit Anda (e.g., &quot;Siap Panen&quot; atau &quot;Terkirim ke Koperasi&quot;). Ketika Anda merubah status ini, data pada Barcode 2 (Public) akan ikut terupdate otomatis secara real-time untuk pembeli dan regulator.
+              </p>
+            </div>
+            <div className="rounded border border-emerald-950 bg-black/40 p-2.5 text-center text-[10px] text-emerald-300 font-mono mt-4 leading-relaxed">
+              <span>Status Verifikasi KYC Lahan saat ini: </span>
+              <span className="font-bold text-white uppercase">{record ? record.verification_status : 'PENDING'}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Access and Governance Form (Only shown for private claim/edit flows) */}
       {showClaimPanel && (
       <section className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20">
