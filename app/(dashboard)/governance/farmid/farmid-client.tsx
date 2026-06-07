@@ -68,6 +68,10 @@ type ApiResult = {
   error?: string;
 };
 
+type FarmIdClientProps = {
+  initialLinkedFarmId?: string | null;
+};
+
 const emptyAccess: AccessState = {
   tokenValid: false,
   canClaim: false,
@@ -92,9 +96,9 @@ function qrUrl(value: string) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(value)}`;
 }
 
-export default function FarmIdClient() {
+export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClientProps) {
   const searchParams = useSearchParams();
-  const queryId = searchParams.get('id') || '';
+  const queryId = searchParams.get('id') || initialLinkedFarmId || '';
   const queryToken = searchParams.get('token') || '';
   const queryMode = searchParams.get('mode') || '';
   
@@ -125,6 +129,7 @@ export default function FarmIdClient() {
 
   const isClaimMode = queryMode === 'claim' && privateToken;
   const isViewMode = queryMode === 'view';
+  const hasLinkedFarmId = Boolean(initialLinkedFarmId);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -548,6 +553,8 @@ export default function FarmIdClient() {
   const cardDistrict = record ? record.district : (formDistrict || 'Kecamatan');
   const cardProvince = record ? record.province : (formProvince || 'Provinsi');
   const cardFarmId = record ? record.farm_id : `PODGE-FARM-${new Date().getFullYear()}-XXXXXXXX`;
+  const showRegistrationForm = !hasLinkedFarmId && !record;
+  const showClaimPanel = Boolean(record && (isClaimMode || access.canEdit || access.canClaim));
 
   // --- RENDERING DEDICATED VIEW MODE (TAB BARU - HANYA KARTU DIGITAL FINAL) ---
   if (isViewMode) {
@@ -832,11 +839,13 @@ export default function FarmIdClient() {
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
             <Fingerprint size={14} />
-            FarmID Key Claiming
+            FarmID Petani
           </div>
           <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">Sertifikasi & KTP Digital Petani</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
-            Dapatkan satu Kartu Identitas Digital Petani yang didukung oleh BPDP dan terverifikasi KYC.
+            {hasLinkedFarmId
+              ? 'FarmID Anda sudah terhubung. Lihat kartu anggota, unggah foto, atau bagikan link verifikasi publik.'
+              : 'Dapatkan satu Kartu Identitas Digital Petani yang didukung oleh BPDP dan terverifikasi KYC.'}
           </p>
         </div>
         <Link
@@ -862,9 +871,10 @@ export default function FarmIdClient() {
       )}
 
       {/* Main Grid: Form on left, Card Visual & Controls on right */}
-      <div className="grid gap-8 xl:grid-cols-[1fr_1.1fr]">
+      <div className={`grid gap-8 ${showRegistrationForm ? 'xl:grid-cols-[1fr_1.1fr]' : 'xl:grid-cols-1'}`}>
         
         {/* Left Column: Register Form */}
+        {showRegistrationForm && (
         <section className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-500 text-black">
@@ -969,6 +979,7 @@ export default function FarmIdClient() {
             </button>
           </form>
         </section>
+        )}
 
         {/* Right Column: Interactive Digital Farmer ID Card Display */}
         <section className="flex flex-col items-center justify-center space-y-6">
@@ -1113,10 +1124,10 @@ export default function FarmIdClient() {
               <button
                 type="button"
                 onClick={() => window.open(publicLink, '_blank')}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
-                title="Buka Tab Baru"
+                className="flex-grow min-w-[150px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-3 text-xs font-bold text-emerald-50 transition"
               >
                 <Eye size={15} />
+                <span>Lihat Kartu Anggota</span>
               </button>
 
               <button
@@ -1161,7 +1172,8 @@ export default function FarmIdClient() {
 
       </div>
 
-      {/* Access and Governance Form (Only shown if loaded or claimed) */}
+      {/* Access and Governance Form (Only shown for private claim/edit flows) */}
+      {showClaimPanel && (
       <section className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -1362,6 +1374,7 @@ export default function FarmIdClient() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

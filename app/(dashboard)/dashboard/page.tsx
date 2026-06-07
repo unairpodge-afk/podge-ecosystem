@@ -16,7 +16,8 @@ import {
   MapPin,
   Calendar,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  Eye
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -172,28 +173,37 @@ export default async function DashboardPage() {
             <h3 className="text-lg font-bold text-white font-space">Aksi Utama Petani</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* Klaim FarmID Card */}
+              {/* Klaim FarmID / Lihat Kartu Anggota Card */}
               <div className="group glass-panel rounded-xl p-6 border border-emerald-500/10 flex flex-col justify-between">
                 <div>
                   <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4">
-                    <Fingerprint size={20} />
+                    {farmRecord ? <Eye size={20} /> : <Fingerprint size={20} />}
                   </div>
-                  <h4 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">Klaim FarmID (Sertifikat Lahan)</h4>
+                  <h4 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                    {farmRecord ? 'Lihat Kartu Anggota' : 'Klaim FarmID (Sertifikat Lahan)'}
+                  </h4>
                   <p className="text-xs text-emerald-100/60 mt-1 leading-relaxed">
-                    Daftarkan luas kebun dan koordinat desa sawit Anda agar buah sawit yang dipanen terjamin legalitasnya.
+                    {farmRecord
+                      ? 'Buka kartu identitas digital petani Anda untuk verifikasi, cetak, atau dibagikan ke koperasi dan mitra.'
+                      : 'Daftarkan luas kebun dan koordinat desa sawit Anda agar buah sawit yang dipanen terjamin legalitasnya.'}
                   </p>
                   
-                  {/* Tutorial Klaim FarmID */}
+                  {/* Tutorial Klaim FarmID / Kartu Anggota */}
                   <div className="mt-4 p-3 bg-emerald-950/35 border border-emerald-800/20 rounded-lg text-emerald-300 text-[11px] leading-relaxed">
                     <p className="font-bold flex items-center gap-1.5 mb-1 font-mono uppercase tracking-wider text-[9px] text-emerald-400">
-                      <HelpCircle size={12} /> Tutorial Klaim Lahan:
+                      <HelpCircle size={12} /> {farmRecord ? 'Menu Kartu Anggota:' : 'Tutorial Klaim Lahan:'}
                     </p>
-                    Klik tombol di bawah &gt; Isi nama, nama koperasi mitra, luas kebun (Hektar) &gt; Masukkan nama Desa, Kecamatan, Provinsi &gt; Kirim klaim. Data ini akan mempermudah penjualan TBS Anda ke Pabrik Kelapa Sawit (PKS) ramah lingkungan.
+                    {farmRecord
+                      ? `FarmID ${farmRecord.farm_id} sudah terhubung. Klik tombol di bawah untuk melihat kartu anggota digital dan link verifikasi publik.`
+                      : 'Klik tombol di bawah > Isi nama, nama koperasi mitra, luas kebun (Hektar) > Masukkan nama Desa, Kecamatan, Provinsi > Kirim klaim. Data ini akan mempermudah penjualan TBS Anda ke Pabrik Kelapa Sawit (PKS) ramah lingkungan.'}
                   </div>
                 </div>
                 
-                <Link href="/governance/farmid" className="mt-5 inline-flex items-center justify-center w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-lg text-xs transition-colors gap-1 shadow-md">
-                  <span>Klaim FarmID</span>
+                <Link
+                  href={farmRecord ? `/governance/farmid?mode=view&id=${encodeURIComponent(farmRecord.farm_id)}` : '/governance/farmid'}
+                  className="mt-5 inline-flex items-center justify-center w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-lg text-xs transition-colors gap-1 shadow-md"
+                >
+                  <span>{farmRecord ? 'Lihat Kartu Anggota' : 'Klaim FarmID'}</span>
                   <ArrowRight size={14} />
                 </Link>
               </div>
