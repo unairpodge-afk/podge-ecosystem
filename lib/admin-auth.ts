@@ -63,6 +63,15 @@ export async function ensureAdminGovernanceTables() {
   `);
 
   await query(`
+    CREATE TABLE IF NOT EXISTS admin_otps (
+      email TEXT PRIMARY KEY,
+      otp_code TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
     INSERT INTO admin_roles (role_id, role_name, description, permissions)
     VALUES
       ('super_admin', 'Super Admin', 'Kontrol penuh atas PODGE governance engine.', '["farmid:verify","farmid:reject","ledger:view","traceability:verify","compliance:verify","green_sukuk:verify","admin:manage"]'::jsonb),
@@ -74,6 +83,12 @@ export async function ensureAdminGovernanceTables() {
       ('finance_verifier', 'Finance Verifier', 'Memverifikasi proyek green sukuk dan aktivitas pembiayaan hijau.', '["green_sukuk:verify","ledger:view"]'::jsonb)
     ON CONFLICT (role_id) DO NOTHING
   `);
+
+  await query(`
+    INSERT INTO admin_users (email, full_name, role_id, is_active)
+    VALUES ('unairpodge@gmail.com', 'Unairpodge BPDP Admin', 'super_admin', true)
+    ON CONFLICT (email) DO NOTHING
+  `);
 }
 
 export async function getCurrentSupabaseUser() {
@@ -81,6 +96,17 @@ export async function getCurrentSupabaseUser() {
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('podge_admin_session')?.value;
+    if (adminSession) {
+      const [email] = adminSession.split(':');
+      if (email) {
+        return {
+          id: 'admin-' + email.replace(/[^a-zA-Z0-9]/g, ''),
+          email: email,
+        } as any;
+      }
+    }
     return null;
   }
 
@@ -105,7 +131,7 @@ export async function getAdminByUser(user: User) {
     WHERE au.is_active = true
       AND (au.auth_user_id = $1::uuid OR lower(au.email) = lower($2))
     LIMIT 1`,
-    [user.id, user.email || ''],
+    [user.id.startsWith('admin-') ? null : user.id, user.email || ''],
   );
 
   const admin = result.rows[0];
@@ -114,7 +140,7 @@ export async function getAdminByUser(user: User) {
     return null;
   }
 
-  if (!admin.auth_user_id) {
+  if (!admin.auth_user_id && user.id && !user.id.startsWith('admin-')) {
     await query('UPDATE admin_users SET auth_user_id = $1, updated_at = NOW() WHERE admin_id = $2', [
       user.id,
       admin.admin_id,
@@ -140,3 +166,4 @@ export async function requireAdmin() {
 
   return { user, admin };
 }
+
