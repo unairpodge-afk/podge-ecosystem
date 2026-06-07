@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   CheckCircle2,
+  Check,
   Copy,
   Eye,
   Fingerprint,
@@ -335,15 +336,21 @@ export default function FarmIdClient() {
 
     // 1. Background Gradient (emerald/black)
     const grad = ctx.createLinearGradient(0, 0, 1000, 600);
-    grad.addColorStop(0, '#06150d');
-    grad.addColorStop(0.5, '#020704');
-    grad.addColorStop(1, '#0c2415');
+    if (record.verification_status === 'verified') {
+      grad.addColorStop(0, '#0c301c');
+      grad.addColorStop(0.5, '#020905');
+      grad.addColorStop(1, '#12542e');
+    } else {
+      grad.addColorStop(0, '#06150d');
+      grad.addColorStop(0.5, '#020704');
+      grad.addColorStop(1, '#0c2415');
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1000, 600);
 
     // Decorative borders
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = record.verification_status === 'verified' ? '#10b981' : 'rgba(16, 185, 129, 0.4)';
+    ctx.lineWidth = record.verification_status === 'verified' ? 6 : 4;
     ctx.strokeRect(10, 10, 980, 580);
     
     // Top colored bar
@@ -363,16 +370,30 @@ export default function FarmIdClient() {
     ctx.font = '14px monospace';
     ctx.fillText('Digital Farmer Identity Card (KTP-Petani)', 50, 90);
 
-    // Badge Petani Mandiri
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-    ctx.fillRect(730, 45, 210, 40);
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-    ctx.strokeRect(730, 45, 210, 40);
-    ctx.fillStyle = '#34d399';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('PETANI MANDIRI', 835, 70);
-    ctx.textAlign = 'left';
+    // Badge Petani Mandiri or KYC VALID
+    if (record.verification_status === 'verified') {
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.fillRect(730, 45, 210, 40);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(730, 45, 210, 40);
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('KYC VALID', 835, 70);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+      ctx.fillRect(730, 45, 210, 40);
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(730, 45, 210, 40);
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PETANI MANDIRI', 835, 70);
+      ctx.textAlign = 'left';
+    }
 
     // 2. Photo Spot
     if (photoUrl) {
@@ -403,7 +424,14 @@ export default function FarmIdClient() {
       
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px sans-serif';
-      ctx.fillText((record?.farmer_name || '').toUpperCase(), 310, 195);
+      const nameText = (record?.farmer_name || '').toUpperCase();
+      ctx.fillText(nameText, 310, 195);
+      if (record?.verification_status === 'verified') {
+        const nameWidth = ctx.measureText(nameText).width;
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText(' ✓', 315 + nameWidth, 195);
+      }
 
       ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
       ctx.font = 'bold 12px monospace';
@@ -577,12 +605,27 @@ export default function FarmIdClient() {
           </div>
         )}
 
-        {/* PRINTABLE CARD AREA */}
         <div id="printable-farmer-card-section" className="w-full">
           {record ? (
-            <div className="w-full max-w-[500px] mx-auto bg-gradient-to-br from-[#06150d] via-[#020704] to-[#0c2415] border-2 border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden font-space">
+            <div className={`w-full max-w-[500px] mx-auto rounded-3xl p-6 sm:p-7 relative overflow-hidden font-space transition-all duration-500 ${
+              record.verification_status === 'verified'
+                ? 'bg-gradient-to-br from-[#0c301c] via-[#020905] to-[#12542e] border-2 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.3)]'
+                : 'bg-gradient-to-br from-[#06150d] via-[#020704] to-[#0c2415] border-2 border-emerald-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'
+            }`}>
+              {/* Holographic watermark seal checkmark if verified */}
+              {record.verification_status === 'verified' && (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 pointer-events-none animate-pulse" />
+                  <div className="absolute -bottom-10 -left-10 text-emerald-500/5 pointer-events-none">
+                    <CheckCircle2 size={220} className="stroke-[1]" />
+                  </div>
+                </>
+              )}
+              
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600"></div>
-              <div className="absolute bottom-3 right-4 text-[9px] font-mono text-emerald-500/25 tracking-widest font-semibold">SECURE DIGITAL CARD</div>
+              <div className="absolute bottom-3 right-4 text-[9px] font-mono text-emerald-500/25 tracking-widest font-semibold">
+                {record.verification_status === 'verified' ? 'VALIDATED KYC CARD' : 'SECURE DIGITAL CARD'}
+              </div>
 
               {/* Card Header */}
               <div className="flex justify-between items-start pb-4 border-b border-emerald-950/80">
@@ -596,16 +639,25 @@ export default function FarmIdClient() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-800/40 px-2.5 py-0.5 rounded-md uppercase">
-                    PETANI MANDIRI
-                  </span>
+                  {record.verification_status === 'verified' ? (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-black bg-gradient-to-r from-emerald-400 to-teal-400 px-2.5 py-1 rounded-md shadow-[0_0_10px_rgba(16,185,129,0.45)] uppercase tracking-wider">
+                      <CheckCircle2 size={10} className="stroke-[3]" />
+                      KYC VALID
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-800/40 px-2.5 py-0.5 rounded-md uppercase">
+                      PETANI MANDIRI
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Card Body */}
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-[115px_1fr] gap-5 items-start">
                 <div className="flex flex-col items-center mx-auto sm:mx-0">
-                  <div className="relative h-32 w-28 bg-black/40 border border-emerald-500/25 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
+                  <div className={`relative h-32 w-28 bg-black/40 border rounded-2xl overflow-hidden shadow-inner flex items-center justify-center ${
+                    record.verification_status === 'verified' ? 'border-emerald-400' : 'border-emerald-500/25'
+                  }`}>
                     {photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={photoUrl} alt="Foto Petani" className="h-full w-full object-cover" />
@@ -621,7 +673,14 @@ export default function FarmIdClient() {
                 <div className="space-y-3.5 text-xs text-left">
                   <div>
                     <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">NAMA LENGKAP PETANI</span>
-                    <span className="text-base font-extrabold text-white uppercase mt-0.5 block truncate leading-none">{cardFarmerName}</span>
+                    <span className="text-base font-extrabold text-white uppercase mt-0.5 flex items-center gap-1.5 leading-none">
+                      {cardFarmerName}
+                      {record.verification_status === 'verified' && (
+                        <span className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-black shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Verified Farmer Profile">
+                          <Check size={11} className="stroke-[4]" />
+                        </span>
+                      )}
+                    </span>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
