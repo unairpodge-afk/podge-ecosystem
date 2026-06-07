@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#052e1a"/>
+      <stop offset="1" stop-color="#020604"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+  <path d="M0 420 C180 360 280 430 430 370 C560 320 710 365 960 300 L960 540 L0 540 Z" fill="#073b24"/>
+  <path d="M0 470 C190 410 330 465 510 410 C660 365 770 420 960 370 L960 540 L0 540 Z" fill="#064e3b"/>
+  <g stroke="#10b981" stroke-opacity=".16">
+    <path d="M0 80H960M0 160H960M0 240H960M0 320H960M0 400H960"/>
+    <path d="M80 0V540M160 0V540M240 0V540M320 0V540M400 0V540M480 0V540M560 0V540M640 0V540M720 0V540M800 0V540M880 0V540"/>
+  </g>
+  <g transform="translate(610 145)" filter="url(#glow)">
+    <circle cx="80" cy="80" r="64" fill="#10b981" fill-opacity=".18"/>
+    <path d="M80 18 C110 52 111 92 80 142 C49 92 50 52 80 18Z" fill="#34d399"/>
+    <path d="M33 73 C70 64 100 79 129 116 C80 119 48 104 33 73Z" fill="#86efac"/>
+    <path d="M127 73 C90 64 60 79 31 116 C80 119 112 104 127 73Z" fill="#22c55e"/>
+  </g>
+  <g transform="translate(80 80)">
+    <rect width="420" height="210" rx="14" fill="#020604" fill-opacity=".68" stroke="#10b981" stroke-opacity=".38"/>
+    <text x="28" y="52" fill="#34d399" font-family="monospace" font-size="22" font-weight="700">HARVEST EVIDENCE PHOTO</text>
+    <text x="28" y="96" fill="#ecfdf5" font-family="Arial, sans-serif" font-size="38" font-weight="800">BATCH-PODGE-2100-001</text>
+    <text x="28" y="138" fill="#a7f3d0" font-family="monospace" font-size="18">GEO: 0.37142, 101.27688</text>
+    <text x="28" y="172" fill="#a7f3d0" font-family="monospace" font-size="18">CAPTURED: 2026-06-05 07:12 WIB</text>
+  </g>
+</svg>

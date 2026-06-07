@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#02130b"/>
+      <stop offset="1" stop-color="#042f1c"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+  <g stroke="#10b981" stroke-opacity=".14">
+    <path d="M0 90H960M0 180H960M0 270H960M0 360H960M0 450H960"/>
+    <path d="M96 0V540M192 0V540M288 0V540M384 0V540M480 0V540M576 0V540M672 0V540M768 0V540M864 0V540"/>
+  </g>
+  <path d="M110 380 L780 380" stroke="#34d399" stroke-width="10" stroke-linecap="round" stroke-opacity=".55"/>
+  <g transform="translate(515 230)" filter="url(#glow)">
+    <rect x="0" y="40" width="250" height="90" rx="12" fill="#10b981"/>
+    <rect x="165" y="0" width="92" height="82" rx="10" fill="#34d399"/>
+    <circle cx="60" cy="140" r="32" fill="#020604" stroke="#a7f3d0" stroke-width="8"/>
+    <circle cx="220" cy="140" r="32" fill="#020604" stroke="#a7f3d0" stroke-width="8"/>
+    <rect x="18" y="58" width="116" height="26" rx="5" fill="#022c22"/>
+    <text x="28" y="77" fill="#a7f3d0" font-family="monospace" font-size="14">BM 2100 POD</text>
+  </g>
+  <g transform="translate(80 76)">
+    <rect width="450" height="238" rx="14" fill="#020604" fill-opacity=".72" stroke="#10b981" stroke-opacity=".38"/>
+    <text x="28" y="52" fill="#34d399" font-family="monospace" font-size="22" font-weight="700">DELIVERY EVIDENCE PHOTO</text>
+    <text x="28" y="96" fill="#ecfdf5" font-family="Arial, sans-serif" font-size="38" font-weight="800">SURAT JALAN</text>
+    <text x="28" y="138" fill="#a7f3d0" font-family="monospace" font-size="18">SJ-PODGE-2100-001</text>
+    <text x="28" y="172" fill="#a7f3d0" font-family="monospace" font-size="18">GEO: 0.35581, 101.33422</text>
+    <text x="28" y="206" fill="#a7f3d0" font-family="monospace" font-size="18">CAPTURED: 2026-06-05 08:04 WIB</text>
+  </g>
+</svg>
