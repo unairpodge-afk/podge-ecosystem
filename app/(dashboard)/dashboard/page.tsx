@@ -505,7 +505,36 @@ export default async function DashboardPage() {
           {/* Perusahaan Quick Actions */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-white font-space">Aksi Cepat Perusahaan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* NEMESIS AI BANNER */}
+            <Link href="/governance/ai-agents" className="group glass-panel rounded-xl p-6 border border-emerald-500/30 hover:border-emerald-400 transition flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden bg-gradient-to-r from-emerald-950/40 to-black">
+              <div className="absolute top-0 right-0 w-64 h-full bg-emerald-500/5 skew-x-12 blur-2xl group-hover:bg-emerald-400/10 transition-colors"></div>
+              
+              <div className="flex items-center gap-5 z-10 w-full">
+                <div className="h-14 w-14 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                  <Brain size={28} className="group-hover:animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-lg font-bold text-white font-space tracking-wide">Nemesis AI / Sentinel Oracle</h4>
+                    <span className="text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse">Live</span>
+                  </div>
+                  <p className="text-xs text-emerald-100/70 leading-relaxed max-w-2xl">
+                    Sistem koordinasi multi-agen otonom untuk mendeteksi anomali fraud, memprediksi kelayakan mutu panen, 
+                    serta memverifikasi kepatuhan deforestasi satelit (Zero Deforestation) secara real-time.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="shrink-0 z-10 mt-4 md:mt-0 self-start md:self-center">
+                <div className="flex items-center text-xs font-bold text-emerald-400 bg-emerald-950/50 px-4 py-2.5 rounded-lg border border-emerald-500/30 group-hover:bg-emerald-500 group-hover:text-black transition-all">
+                  <span>Luncurkan Intelijen AI</span>
+                  <ArrowRight size={14} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
               <Link href="/governance/traceability" className="group glass-panel rounded-xl p-6 border border-blue-500/10 hover:border-blue-500/40 transition flex flex-col justify-between">
                 <div>
                   <div className="h-10 w-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">

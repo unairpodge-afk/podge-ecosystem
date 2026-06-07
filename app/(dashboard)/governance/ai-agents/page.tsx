@@ -223,11 +223,11 @@ export default function AIAgentsPage() {
       {/* Page Header */}
       <div>
         <div className="inline-flex items-center rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
-          Nemesis AI Core v2.1
+          Nemesis Sentinel Oracle v2.1
         </div>
-        <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">AI Agent Operations Control Room</h1>
-        <p className="text-sm text-emerald-200/60 mt-1">
-          Sistem koordinasi multi-agen sawit otonom: memastikan kelayakan mutu panen petani, kepatuhan legalitas PKS, 
+        <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">AI Intelligence Control Room</h1>
+        <p className="text-sm text-emerald-200/60 mt-1 max-w-4xl">
+          Sistem koordinasi multi-agen sawit otonom: memastikan kelayakan mutu panen petani, kepatuhan legalitas PKS secara spasial, 
           peningkatan kesejahteraan petani (Incentive Premium), dan kelancaran ekspor CPO melimpah ke pasar internasional.
         </p>
       </div>

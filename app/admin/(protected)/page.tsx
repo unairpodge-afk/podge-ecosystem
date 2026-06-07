@@ -119,6 +119,35 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
+        {/* NEMESIS AI BANNER (ADMIN) */}
+        <div className="mt-8">
+          <a href="/governance/ai-agents" className="group glass-panel rounded-xl p-6 border border-emerald-500/50 hover:border-emerald-400 transition flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden bg-gradient-to-r from-emerald-950/60 to-black/80 shadow-[0_0_20px_rgba(16,185,129,0.15)] block cursor-pointer">
+            <div className="absolute top-0 right-0 w-64 h-full bg-emerald-500/10 skew-x-12 blur-2xl group-hover:bg-emerald-400/20 transition-colors"></div>
+            
+            <div className="flex items-center gap-5 z-10 w-full">
+              <div className="h-14 w-14 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:animate-pulse"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-5.224 4.668A4 4 0 0 0 5.876 15 6 6 0 0 0 18 15a4 4 0 0 0 5.097-5.207 4 4 0 0 0-5.224-4.668A3 3 0 1 0 12 5Z"/><path d="M8.5 20c-1.333-1-2.5-1.5-3.5-1.5M15.5 20c1.333-1 2.5-1.5 3.5-1.5"/></svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="text-lg font-bold text-white font-space tracking-wide">Nemesis AI / Sentinel Oracle</h4>
+                  <span className="text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse">Live Radar</span>
+                </div>
+                <p className="text-xs text-emerald-100/70 leading-relaxed max-w-2xl">
+                  Buka pusat kendali intelijen siber admin. Awasi mutu TBS nasional, deteksi fraud deforestasi PKS satelit geospasial, dan pantau kesejahteraan petani mandiri secara real-time.
+                </p>
+              </div>
+            </div>
+            
+            <div className="shrink-0 z-10 mt-4 md:mt-0 self-start md:self-center">
+              <div className="flex items-center text-xs font-bold text-black bg-emerald-500 px-4 py-2.5 rounded-lg border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 group-hover:scale-105 transition-all">
+                <span>Akses Intelijen Siber</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1.5 group-hover:translate-x-1 transition-transform"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </div>
+            </div>
+          </a>
+        </div>
+
         {/* BPDP KS Presentation Note */}
         <div className="mt-8 rounded-lg border border-emerald-950 bg-emerald-950/20 p-4">
           <h4 className="text-xs font-bold text-emerald-300 font-mono uppercase tracking-wide">Tujuan Riset & Manfaat Strategis</h4>
