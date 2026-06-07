@@ -2,6 +2,7 @@ import { getIdentitySession } from '@/lib/identity';
 import { query } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import TokenManager from './token-manager';
 import {
   Fingerprint,
   Layers,
@@ -340,6 +341,12 @@ export default async function DashboardPage() {
             </div>
 
           </div>
+
+          {/* Token Manager Section */}
+          <TokenManager
+            publicCode={identity.public_code}
+            farmId={identity.linked_farm_id}
+          />
         </div>
       )}
 
