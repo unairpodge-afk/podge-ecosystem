@@ -101,7 +101,7 @@ export const featuredBatch: BatchPassport = {
   pks_destination: 'PKS PT Aura Sawit Traceable Mill',
   blockchain_hash: '0x9f0c72f4519c3a8e687c9a01542b7ddad83374ba5f07fb39c4a6f4a0c9ef2100',
   status: 'Terverifikasi',
-  created_at: '2026-06-05T08:40:00.000Z',
+  created_at: '2026-06-05T10:20:00.000Z',
   estate: {
     name: 'Blok A12 Kebun Sei Pagar',
     province: 'Riau',
@@ -120,7 +120,7 @@ export const featuredBatch: BatchPassport = {
     registrationId: 'KOP-RIAU-KPR-2026-0018',
     chairperson: 'H. M. Ridwan',
     validationStatus: 'Validated by PODGE Admin + Independent Auditor',
-    verifiedAt: '2026-06-05T07:55:00.000Z',
+    verifiedAt: '2026-06-05T07:48:00.000Z',
   },
   farmer: {
     name: 'Kelompok Petani Blok A12',
@@ -158,7 +158,7 @@ export const featuredBatch: BatchPassport = {
       label: 'Foto Bukti Pengiriman',
       url: '/evidence/batch-podge-2100-001-delivery.svg',
       capturedAt: '2026-06-05T08:04:00.000Z',
-      geoTag: '0.35581, 101.33422',
+      geoTag: '0.45581, 101.93422',
       hash: 'sha256:cc71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
     },
   ],
@@ -185,10 +185,17 @@ export const featuredBatch: BatchPassport = {
       entryHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
     },
     {
-      time: '2026-06-05T08:40:00.000Z',
-      actor: 'Auditor',
-      action: 'ISPO/RSPO documents, distance, duplicate hash, and geofence checked',
+      time: '2026-06-05T09:49:00.000Z',
+      actor: 'PKS',
+      action: 'TBS delivery arrived, weighed, and accepted at Mill reception',
       previousHash: '0xf6100c9112d6043891a727d900a6949a21007ca89cce4111f4cf2d64f4fd1c6a',
+      entryHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
+    },
+    {
+      time: '2026-06-05T10:20:00.000Z',
+      actor: 'Auditor',
+      action: 'ISPO/RSPO compliance documents and geofencing validation finalized',
+      previousHash: '0x3c71a41a90e9fb3cb272032ff9f4542a2100d3f86fa4f51b722873af4b59a6be',
       entryHash: '0x9f0c72f4519c3a8e687c9a01542b7ddad83374ba5f07fb39c4a6f4a0c9ef2100',
     },
   ],
@@ -209,8 +216,8 @@ export const featuredBatch: BatchPassport = {
   },
   tbsDetails: {
     transactionId: 'TX-TBS-2100-001',
-    grossWeight: 5120,
-    tareWeight: 245,
+    grossWeight: 7325,
+    tareWeight: 2450,
     netWeight: 4875,
     quality: 'Kelas A (Super)',
   },
@@ -219,7 +226,7 @@ export const featuredBatch: BatchPassport = {
     licensePlate: 'BM 2100 POD',
     driver: 'Budi Santoso',
     departureTime: '2026-06-05T08:04:00.000Z',
-    arrivalTime: '2026-06-05T09:45:00.000Z',
+    arrivalTime: '2026-06-05T09:49:00.000Z',
     gpsStatus: 'Active (Locked GPS-Track)',
   },
   pdfReportUrl: '/verify/BATCH-PODGE-2100-001/report.pdf',
@@ -286,6 +293,118 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
   const weight = Number(batch.tbs_weight_kg);
   const isVerified = batch.status === 'Terverifikasi';
 
+  // Smart Cooperative & Farmer Naming
+  let cooperativeName = '';
+  let farmerGroupName = '';
+  if (batch.farmer_name.toLowerCase().includes('koperasi') || batch.farmer_name.toLowerCase().includes('kud') || batch.farmer_name.toLowerCase().includes('kop')) {
+    cooperativeName = batch.farmer_name;
+    const cleanName = batch.farmer_name
+      .replace(/koperasi/gi, '')
+      .replace(/kud/gi, '')
+      .replace(/kop/gi, '')
+      .trim();
+    farmerGroupName = `Kelompok Petani Binaan ${cleanName}`;
+  } else {
+    farmerGroupName = batch.farmer_name;
+    cooperativeName = batch.farmer_name.toLowerCase().includes('kelompok')
+      ? batch.farmer_name.replace(/kelompok tani/gi, 'Koperasi Tani').replace(/kelompok/gi, 'Koperasi')
+      : `Koperasi Mitra ${batch.farmer_name}`;
+  }
+
+  // Calculate distance and travel duration
+  const distanceKm = 30 + (absSeed % 80);
+  const travelDurationMinutes = Math.round((distanceKm / 50) * 60);
+
+  // Calculate geolocations of PKS (Mill) arrival
+  // 1 degree is roughly 111 km. Northeast bearing used for displacement
+  const latOffset = (distanceKm / 111) * 0.7071;
+  const lngOffset = (distanceKm / 111) * 0.7071;
+
+  const createdDate = new Date(batch.created_at);
+  let harvestTime: string;
+  let weighedTime: string;
+  let departureTime: string;
+  let arrivalTime: string;
+  let gpsStatus: string;
+  let validationStatus: string;
+
+  if (isVerified) {
+    // Verified: timeline finalized in the past. verifiedTime = createdDate
+    const verifiedTimeMs = createdDate.getTime();
+    const arrivalTimeMs = verifiedTimeMs - 30 * 60 * 1000; // Arrived 30 mins before verification
+    const departureTimeMs = arrivalTimeMs - travelDurationMinutes * 60 * 1000;
+    const weighedTimeMs = departureTimeMs - 15 * 60 * 1000;
+    const harvestTimeMs = weighedTimeMs - 45 * 60 * 1000;
+
+    harvestTime = new Date(harvestTimeMs).toISOString();
+    weighedTime = new Date(weighedTimeMs).toISOString();
+    departureTime = new Date(departureTimeMs).toISOString();
+    arrivalTime = new Date(arrivalTimeMs).toISOString();
+    gpsStatus = 'Active (Locked GPS-Track / Delivered)';
+    validationStatus = 'Validated by PODGE Admin + BPDPKS Auditor';
+  } else {
+    // Pending: createdDate is dispatch submission time. Truck is in transit or awaiting mill verify
+    const dispatchTimeMs = createdDate.getTime();
+    const departureTimeMs = dispatchTimeMs;
+    const weighedTimeMs = departureTimeMs - 15 * 60 * 1000;
+    const harvestTimeMs = weighedTimeMs - 45 * 60 * 1000;
+    const arrivalTimeMs = departureTimeMs + travelDurationMinutes * 60 * 1000;
+
+    harvestTime = new Date(harvestTimeMs).toISOString();
+    weighedTime = new Date(weighedTimeMs).toISOString();
+    departureTime = new Date(departureTimeMs).toISOString();
+    arrivalTime = new Date(arrivalTimeMs).toISOString();
+    gpsStatus = batch.status === 'Tertunda' ? 'Hold (Transit Halted for Investigation)' : 'Active (En Route to Mill)';
+    validationStatus = batch.status === 'Tertunda' ? 'Audit Pending Investigation' : 'Menunggu Validasi Dokumen Lahan & Penerimaan PKS';
+  }
+
+  // Realistic weights
+  const tareWeight = 2000 + (absSeed % 1000); // 2000 - 3000 Kg
+  const grossWeight = weight + tareWeight;
+
+  const harvestStepHash = '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step1-harvest').digest('hex');
+  const weighStepHash = isVerified 
+    ? '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step2-weigh').digest('hex')
+    : batch.blockchain_hash;
+  const pksStepHash = '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step3-receive').digest('hex');
+  const finalStepHash = batch.blockchain_hash;
+
+  const auditTrail = [
+    {
+      time: harvestTime,
+      actor: 'Petani',
+      action: 'Harvest photo and land geofence validation submitted',
+      previousHash: 'GENESIS',
+      entryHash: harvestStepHash,
+    },
+    {
+      time: weighedTime,
+      actor: 'Koperasi',
+      action: `Volume weighed and cooperative identity validated (${weight.toLocaleString('id-ID')} Kg Net)`,
+      previousHash: harvestStepHash,
+      entryHash: weighStepHash,
+    },
+  ];
+
+  if (isVerified) {
+    auditTrail.push(
+      {
+        time: arrivalTime,
+        actor: 'PKS',
+        action: `TBS delivery arrived, weighed, and accepted at Mill reception`,
+        previousHash: weighStepHash,
+        entryHash: pksStepHash,
+      },
+      {
+        time: createdDate.toISOString(),
+        actor: 'Auditor',
+        action: 'ISPO/RSPO compliance documents and geofencing validation finalized',
+        previousHash: pksStepHash,
+        entryHash: finalStepHash,
+      }
+    );
+  }
+
   return {
     id: batch.id,
     batch_id: batch.batch_id,
@@ -305,14 +424,14 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       areaHa,
     },
     cooperative: {
-      name: batch.farmer_name.includes('Koperasi') ? batch.farmer_name : `Koperasi Mitra ${batch.farmer_name}`,
+      name: cooperativeName,
       registrationId: `KOP-RIAU-KPR-${2020 + (absSeed % 7)}-00${10 + (absSeed % 89)}`,
       chairperson: absSeed % 2 === 0 ? 'Bapak Ir. H. Mulyadi' : 'Bapak Slamet Rahardjo',
-      validationStatus: isVerified ? 'Validated by PODGE Admin + BPDPKS Auditor' : 'Menunggu Validasi Dokumen Lahan',
-      verifiedAt: new Date(new Date(batch.created_at).getTime() - 45 * 60 * 1000).toISOString(),
+      validationStatus,
+      verifiedAt: weighedTime,
     },
     farmer: {
-      name: batch.farmer_name,
+      name: farmerGroupName,
       memberId: `MEMBER-${100 + (absSeed % 900)}`,
       nationalIdMasked: `1403${absSeed % 9}********00${absSeed % 99}`,
       phoneMasked: `+62 812 **** ${1000 + (absSeed % 8999)}`,
@@ -321,7 +440,7 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       {
         scheme: 'ISPO',
         certificateNo: `ISPO/ID-RIAU/2026/0${100 + (absSeed % 899)}`,
-        holder: batch.farmer_name,
+        holder: cooperativeName,
         validUntil: '2031-03-20',
         documentUrl: '#',
         status: isVerified ? 'Valid' : 'Pending Verification Review',
@@ -331,41 +450,26 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       {
         label: 'Foto Bukti Panen',
         url: '/evidence/batch-podge-2100-001-harvest.svg',
-        capturedAt: new Date(new Date(batch.created_at).getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        capturedAt: harvestTime,
         geoTag: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
         hash: `sha256:${crypto.createHash('sha256').update(batch.batch_id + 'harvest').digest('hex')}`,
       },
       {
         label: 'Foto Bukti Pengiriman',
         url: '/evidence/batch-podge-2100-001-delivery.svg',
-        capturedAt: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
-        geoTag: `${(lat + 0.04).toFixed(5)}, ${(lng + 0.04).toFixed(5)}`,
+        capturedAt: departureTime,
+        geoTag: `${(lat + 0.002).toFixed(5)}, ${(lng + 0.002).toFixed(5)}`,
         hash: `sha256:${crypto.createHash('sha256').update(batch.batch_id + 'delivery').digest('hex')}`,
       },
     ],
     roles: [
-      { role: 'Petani', actor: batch.farmer_name, authority: 'Create harvest evidence', status: 'Signed' },
-      { role: 'Koperasi', actor: batch.farmer_name.includes('Koperasi') ? batch.farmer_name : `Koperasi Mitra ${batch.farmer_name}`, authority: 'Validate member and volume', status: 'Signed' },
+      { role: 'Petani', actor: farmerGroupName, authority: 'Create harvest evidence', status: 'Signed' },
+      { role: 'Koperasi', actor: cooperativeName, authority: 'Validate member and volume', status: 'Signed' },
       { role: 'PKS', actor: batch.pks_destination, authority: 'Receive shipment', status: isVerified ? 'Signed' : 'Pending' },
       { role: 'Auditor', actor: 'BPDPKS Auditor', authority: 'Verify geofence and compliance', status: isVerified ? 'Signed' : 'Pending' },
       { role: 'Admin', actor: 'PODGE Governance Node', authority: 'Lock ledger record', status: isVerified ? 'Signed' : 'Pending' },
     ],
-    auditTrail: [
-      {
-        time: new Date(new Date(batch.created_at).getTime() - 2 * 60 * 60 * 1000).toISOString(),
-        actor: 'Petani',
-        action: 'Harvest photo and geolocation submitted',
-        previousHash: 'GENESIS',
-        entryHash: '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step1').digest('hex'),
-      },
-      {
-        time: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
-        actor: 'Koperasi',
-        action: 'Volume weighed and cooperative identity validated',
-        previousHash: '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step1').digest('hex'),
-        entryHash: batch.blockchain_hash,
-      },
-    ],
+    auditTrail,
     antiFraudChecks: [
       { check: 'Duplicate hash detection', result: 'Pass', detail: 'No matching hash found in active ledger sample.' },
       { 
@@ -373,7 +477,7 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
         result: weight > 7500 ? 'Review' : 'Pass', 
         detail: `${weight.toLocaleString('id-ID')} Kg yield checked against estate historic capacity.` 
       },
-      { check: 'Distance sanity', result: 'Pass', detail: 'Mill destination route falls within regional bounds.' },
+      { check: 'Distance sanity', result: 'Pass', detail: `${distanceKm} Km route distance is below 120 Km regional max.` },
       { 
         check: 'Geofence validation', 
         result: isVerified ? 'Pass' : 'Review', 
@@ -385,13 +489,13 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       invoiceNo: `INV-PODGE-${1000 + (absSeed % 8999)}`,
       truckPlate,
       driverMasked: 'DVR-****-' + (absSeed % 100),
-      distanceKm: 30 + (absSeed % 80),
+      distanceKm,
       maxDistanceKm: 120,
     },
     tbsDetails: {
       transactionId: `TX-TBS-${1000 + (absSeed % 8999)}`,
-      grossWeight: weight + 200 + (absSeed % 150),
-      tareWeight: (weight + 200 + (absSeed % 150)) - weight,
+      grossWeight,
+      tareWeight,
       netWeight: weight,
       quality: absSeed % 2 === 0 ? 'Kelas A (Super)' : 'Kelas B (Standar)',
     },
@@ -399,9 +503,9 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       deliveryId: `TR-LOG-${1000 + (absSeed % 8999)}`,
       licensePlate: truckPlate,
       driver: absSeed % 2 === 0 ? 'Supriadi' : 'M. Yusuf',
-      departureTime: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
-      arrivalTime: new Date(batch.created_at).toISOString(),
-      gpsStatus: 'Active (Locked GPS-Track)',
+      departureTime,
+      arrivalTime,
+      gpsStatus,
     },
   };
 }

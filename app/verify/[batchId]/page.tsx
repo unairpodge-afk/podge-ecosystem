@@ -204,7 +204,18 @@ export default async function BatchPassportPage({ params }: { params: Promise<{ 
                   <Info label="No. Polisi Armada" value={batch.transportationDetails.licensePlate} />
                   <Info label="Nama Pengemudi (Supir)" value={batch.transportationDetails.driver} />
                   <Info label="Waktu Berangkat (Out)" value={new Date(batch.transportationDetails.departureTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) + ' WIB'} />
-                  <Info label="Waktu Tiba (In Mill)" value={new Date(batch.transportationDetails.arrivalTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) + ' WIB'} />
+                  <Info
+                    label={batch.status === 'Terverifikasi' ? "Waktu Tiba (In Mill)" : "Estimasi Tiba (In Mill)"}
+                    value={
+                      new Date(batch.transportationDetails.arrivalTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) + ' WIB' +
+                      (batch.status === 'Terverifikasi' 
+                        ? '' 
+                        : batch.status === 'Tertunda'
+                          ? ' (Tertunda)'
+                          : ' (Estimasi)'
+                      )
+                    }
+                  />
                   <div className="col-span-2">
                     <Info label="Status GPS Realtime" value={batch.transportationDetails.gpsStatus} />
                   </div>
@@ -218,11 +229,17 @@ export default async function BatchPassportPage({ params }: { params: Promise<{ 
                       { name: 'e-Fact Pengiriman', valid: true },
                       { name: 'GPS Telemetry Log', valid: true },
                       { name: 'Foto Muatan Truk', valid: true },
-                      { name: 'Waktu Tiba PKS', valid: true },
+                      { name: 'Waktu Tiba PKS', valid: batch.status === 'Terverifikasi' },
                     ].map(doc => (
                       <div key={doc.name} className="flex items-center gap-1.5 text-xs text-emerald-200/80">
-                        <BadgeCheck size={13} className="text-emerald-400 shrink-0" />
-                        <span>{doc.name}</span>
+                        {doc.valid ? (
+                          <BadgeCheck size={13} className="text-emerald-400 shrink-0" />
+                        ) : (
+                          <Timer size={13} className="text-yellow-500 shrink-0 animate-pulse" />
+                        )}
+                        <span className={doc.valid ? '' : 'text-emerald-200/40 font-mono text-[10px] uppercase'}>
+                          {doc.name} {doc.valid ? '' : '(Awaiting)'}
+                        </span>
                       </div>
                     ))}
                   </div>
