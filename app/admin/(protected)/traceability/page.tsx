@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { Check, X, ShieldAlert, Award, FileText, Undo2 } from 'lucide-react';
+import { Check, X, Award, FileText, Undo2 } from 'lucide-react';
 import { appendLedgerEvent } from '@/lib/ledger';
 import Link from 'next/link';
 
@@ -19,6 +19,45 @@ type TraceLog = {
   created_at: string;
 };
 
+async function updateTraceabilityStatus({
+  rowId,
+  batchId,
+  status,
+  blockchainHash,
+}: {
+  rowId: string;
+  batchId: string;
+  status: 'Terverifikasi' | 'Tertunda';
+  blockchainHash?: string;
+}) {
+  const trimmedRowId = rowId.trim();
+  const trimmedBatchId = batchId.trim();
+
+  if (!trimmedRowId && !trimmedBatchId) {
+    throw new Error('Row ID atau Batch ID wajib tersedia.');
+  }
+
+  if (trimmedRowId) {
+    return query<Pick<TraceLog, 'id' | 'batch_id'>>(
+      `UPDATE traceability_logs
+       SET status = $2,
+           blockchain_hash = COALESCE($3, blockchain_hash)
+       WHERE id::text = $1
+       RETURNING id, batch_id`,
+      [trimmedRowId, status, blockchainHash || null],
+    );
+  }
+
+  return query<Pick<TraceLog, 'id' | 'batch_id'>>(
+    `UPDATE traceability_logs
+     SET status = $2,
+         blockchain_hash = COALESCE($3, blockchain_hash)
+     WHERE batch_id = $1
+     RETURNING id, batch_id`,
+    [trimmedBatchId, status, blockchainHash || null],
+  );
+}
+
 export default async function AdminTraceabilityPage() {
   const { admin } = await requireAdmin();
 
@@ -26,6 +65,7 @@ export default async function AdminTraceabilityPage() {
   async function approveBatchAction(formData: FormData) {
     'use server';
     const batchId = formData.get('batchId') as string;
+    const rowId = formData.get('rowId') as string;
     const note = formData.get('note') as string || '';
     const { admin: activeAdmin } = await requireAdmin();
 
@@ -33,16 +73,23 @@ export default async function AdminTraceabilityPage() {
 
     try {
       // 1. Update DB log status
-      await query(`
-        UPDATE traceability_logs
-        SET status = 'Terverifikasi', blockchain_hash = $1
-        WHERE batch_id = $2
-      `, [freshHash, batchId]);
+      const updateResult = await updateTraceabilityStatus({
+        rowId,
+        batchId,
+        status: 'Terverifikasi',
+        blockchainHash: freshHash,
+      });
+
+      if (updateResult.rowCount === 0) {
+        throw new Error(`Batch ${batchId} tidak ditemukan di traceability_logs.`);
+      }
+
+      const updatedBatchId = updateResult.rows[0]?.batch_id || batchId;
 
       // 2. Append event to cryptographic Ledger
       await appendLedgerEvent({
         entityType: 'traceability',
-        entityId: batchId,
+        entityId: updatedBatchId,
         action: 'approve_traceability_batch',
         actor: {
           adminId: activeAdmin.admin_id,
@@ -53,7 +100,8 @@ export default async function AdminTraceabilityPage() {
           verified_by: activeAdmin.full_name,
           verification_note: note || 'Lolos peninjauan kriteria keterlacakan BPDPKS',
           blockchain_hash: freshHash,
-          status: 'Terverifikasi'
+          status: 'Terverifikasi',
+          row_id: rowId || null,
         }
       });
     } catch (err) {
@@ -69,21 +117,28 @@ export default async function AdminTraceabilityPage() {
   async function rejectBatchAction(formData: FormData) {
     'use server';
     const batchId = formData.get('batchId') as string;
+    const rowId = formData.get('rowId') as string;
     const note = formData.get('note') as string || '';
     const { admin: activeAdmin } = await requireAdmin();
 
     try {
       // 1. Update DB status to Tertunda
-      await query(`
-        UPDATE traceability_logs
-        SET status = 'Tertunda'
-        WHERE batch_id = $1
-      `, [batchId]);
+      const updateResult = await updateTraceabilityStatus({
+        rowId,
+        batchId,
+        status: 'Tertunda',
+      });
+
+      if (updateResult.rowCount === 0) {
+        throw new Error(`Batch ${batchId} tidak ditemukan di traceability_logs.`);
+      }
+
+      const updatedBatchId = updateResult.rows[0]?.batch_id || batchId;
 
       // 2. Append event to Ledger
       await appendLedgerEvent({
         entityType: 'traceability',
-        entityId: batchId,
+        entityId: updatedBatchId,
         action: 'reject_traceability_batch',
         actor: {
           adminId: activeAdmin.admin_id,
@@ -93,7 +148,8 @@ export default async function AdminTraceabilityPage() {
         payload: {
           rejected_by: activeAdmin.full_name,
           rejection_note: note || 'Dibutuhkan review ulang berkas pengiriman',
-          status: 'Tertunda'
+          status: 'Tertunda',
+          row_id: rowId || null,
         }
       });
     } catch (err) {
@@ -176,7 +232,7 @@ export default async function AdminTraceabilityPage() {
             </thead>
             <tbody className="divide-y divide-emerald-950/80">
               {logs.map((log) => (
-                <tr key={log.batch_id} className="text-emerald-50/85 hover:bg-emerald-950/10">
+                <tr key={String(log.id)} className="text-emerald-50/85 hover:bg-emerald-950/10">
                   <td className="px-5 py-4 font-mono font-bold text-emerald-300">
                     {log.batch_id}
                   </td>
@@ -204,10 +260,11 @@ export default async function AdminTraceabilityPage() {
 
                   {/* Actions Column */}
                   <td className="px-5 py-4 text-center">
-                    <form className="flex items-center justify-center gap-2">
-                      <input type="hidden" name="batchId" value={log.batch_id} />
-                      {log.status !== 'Terverifikasi' ? (
-                        <>
+                    {log.status !== 'Terverifikasi' ? (
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <form action={approveBatchAction} className="flex items-center justify-center gap-2">
+                          <input type="hidden" name="rowId" value={String(log.id)} />
+                          <input type="hidden" name="batchId" value={log.batch_id} />
                           <input
                             type="text"
                             name="note"
@@ -215,42 +272,45 @@ export default async function AdminTraceabilityPage() {
                             className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
                           />
                           <button
-                            formAction={approveBatchAction}
                             type="submit"
                             title="Setujui Keterlacakan Batch"
                             className="p-1.5 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition cursor-pointer"
                           >
                             <Check size={14} className="stroke-[3]" />
                           </button>
+                        </form>
+                        <form action={rejectBatchAction}>
+                          <input type="hidden" name="rowId" value={String(log.id)} />
+                          <input type="hidden" name="batchId" value={log.batch_id} />
                           <button
-                            formAction={rejectBatchAction}
                             type="submit"
                             title="Tandai Audit Tertunda"
                             className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer"
                           >
                             <X size={14} className="stroke-[3]" />
                           </button>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            name="note"
-                            placeholder="Catatan reset..."
-                            className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
-                          />
-                          <button
-                            formAction={rejectBatchAction}
-                            type="submit"
-                            title="Kembalikan Status ke Pending/Review"
-                            className="p-1.5 rounded-lg border border-yellow-700/60 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/50 transition flex items-center gap-1 text-[10px] font-bold cursor-pointer"
-                          >
-                            <Undo2 size={12} />
-                            Reset Status
-                          </button>
-                        </div>
-                      )}
-                    </form>
+                        </form>
+                      </div>
+                    ) : (
+                      <form action={rejectBatchAction} className="flex items-center justify-center gap-2">
+                        <input type="hidden" name="rowId" value={String(log.id)} />
+                        <input type="hidden" name="batchId" value={log.batch_id} />
+                        <input
+                          type="text"
+                          name="note"
+                          placeholder="Catatan reset..."
+                          className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
+                        />
+                        <button
+                          type="submit"
+                          title="Kembalikan Status ke Pending/Review"
+                          className="p-1.5 rounded-lg border border-yellow-700/60 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/50 transition flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                        >
+                          <Undo2 size={12} />
+                          Reset Status
+                        </button>
+                      </form>
+                    )}
                   </td>
 
                   {/* Public Link */}

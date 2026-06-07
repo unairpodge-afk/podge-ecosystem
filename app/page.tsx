@@ -87,8 +87,11 @@ export default async function MainLandingPage() {
               </Link>
               <Link href="/login" className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-xs font-bold text-white rounded-lg group bg-gradient-to-br from-emerald-500 to-green-800 group-hover:from-emerald-500 group-hover:to-green-800 hover:text-white focus:ring-4 focus:outline-none focus:ring-green-800">
                 <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-black rounded-md group-hover:bg-opacity-0 font-space tracking-wider">
-                  MASUK / DAFTAR
+                  MASUK
                 </span>
+              </Link>
+              <Link href="/register" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
+                DAFTAR
               </Link>
             </>
           )}
@@ -138,6 +141,11 @@ export default async function MainLandingPage() {
             <Link href={identity ? "/dashboard" : "/login"} className="bg-emerald-500 hover:bg-emerald-400 text-black text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:scale-[1.02]">
               {identity ? "Buka Dashboard" : "Masuk ke Aplikasi"}
             </Link>
+            {!identity && (
+              <Link href="/register" className="border border-emerald-800/60 hover:bg-emerald-950/30 text-white text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide">
+                Daftar Baru
+              </Link>
+            )}
             <Link href="/value-creation/green-sukuk" className="border border-emerald-800/60 hover:bg-emerald-950/30 text-white text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide">
               Explore Green Financing
             </Link>

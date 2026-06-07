@@ -45,6 +45,12 @@ type ResetResult = {
   error?: string;
 };
 
+type ClaimResult = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+};
+
 const TYPE_LABELS: Record<string, string> = {
   farmer: 'Petani',
   cooperative: 'Koperasi',
@@ -80,6 +86,7 @@ function accessLink(origin: string, publicCode: string, token: string) {
 }
 
 export default function MembersClient({ members }: { members: MemberRow[] }) {
+  const [memberRows, setMemberRows] = useState(members);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -90,8 +97,10 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
   const [resetLoading, setResetLoading] = useState<string | null>(null);
   const [resetResults, setResetResults] = useState<Record<string, ResetResult>>({});
   const [confirmReset, setConfirmReset] = useState<string | null>(null);
+  const [claimLoading, setClaimLoading] = useState<string | null>(null);
+  const [claimResults, setClaimResults] = useState<Record<string, ClaimResult>>({});
 
-  const filtered = members.filter((m) => {
+  const filtered = memberRows.filter((m) => {
     const matchSearch =
       !search ||
       m.display_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -133,13 +142,48 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
       });
       const data = await resp.json() as ResetResult;
       setResetResults((prev) => ({ ...prev, [identityId]: data }));
-    } catch (err) {
+    } catch {
       setResetResults((prev) => ({
         ...prev,
         [identityId]: { error: 'Gagal menghubungi server.' },
       }));
     }
     setResetLoading(null);
+  }
+
+  async function handleClaimStatus(identityId: string, action: 'claim' | 'unclaim') {
+    setClaimLoading(identityId);
+    setClaimResults((prev) => ({ ...prev, [identityId]: {} }));
+
+    try {
+      const resp = await fetch('/api/admin/members/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityId, action }),
+      });
+      const data = await resp.json() as ClaimResult & { identity?: Partial<MemberRow> };
+      setClaimResults((prev) => ({ ...prev, [identityId]: data }));
+
+      if (resp.ok && data.identity) {
+        setMemberRows((prev) => prev.map((member) => (
+          member.identity_id === identityId
+            ? {
+                ...member,
+                is_claimed: Boolean(data.identity?.is_claimed),
+                claimed_at: (data.identity?.claimed_at as string | null | undefined) || null,
+                updated_at: (data.identity?.updated_at as string | undefined) || member.updated_at,
+              }
+            : member
+        )));
+      }
+    } catch {
+      setClaimResults((prev) => ({
+        ...prev,
+        [identityId]: { error: 'Gagal menghubungi server.' },
+      }));
+    } finally {
+      setClaimLoading(null);
+    }
   }
 
   return (
@@ -179,7 +223,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
           ))}
         </select>
         <span className="self-center text-xs text-emerald-400/60 font-mono">
-          {filtered.length} dari {members.length} anggota
+          {filtered.length} dari {memberRows.length} anggota
         </span>
       </div>
 
@@ -191,7 +235,9 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
           const showHash = visibleHashes.has(m.identity_id);
           const publicLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app'}/identity/view?id=${encodeURIComponent(m.public_code)}`;
           const resetResult = resetResults[m.identity_id];
+          const claimResult = claimResults[m.identity_id];
           const isResetting = resetLoading === m.identity_id;
+          const isClaimChanging = claimLoading === m.identity_id;
           const awaitingConfirm = confirmReset === m.identity_id;
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app';
 
@@ -294,6 +340,20 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                     </div>
                   )}
 
+                  {claimResult?.error && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-200 flex items-start gap-2">
+                      <ShieldAlert size={13} className="shrink-0 text-red-400 mt-0.5" />
+                      {claimResult.error}
+                    </div>
+                  )}
+
+                  {claimResult?.success && claimResult.message && (
+                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200 flex items-start gap-2">
+                      <Check size={13} className="shrink-0 text-emerald-400 mt-0.5" />
+                      {claimResult.message}
+                    </div>
+                  )}
+
                   <div className="grid sm:grid-cols-2 gap-4">
                     {/* Left: identity data */}
                     <div className="space-y-2 text-xs">
@@ -347,7 +407,24 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                       )}
 
                       {/* Reset Token Button */}
-                      <div className="pt-1">
+                      <div className="grid gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={isClaimChanging}
+                          onClick={() => handleClaimStatus(m.identity_id, m.is_claimed ? 'unclaim' : 'claim')}
+                          className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[10px] font-bold transition disabled:opacity-50 ${
+                            m.is_claimed
+                              ? 'border border-yellow-500/40 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/40'
+                              : 'border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-950/60'
+                          }`}
+                        >
+                          {isClaimChanging ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                          {isClaimChanging
+                            ? 'Memproses Status...'
+                            : m.is_claimed
+                              ? 'Unclaim Anggota'
+                              : 'Claim Anggota'}
+                        </button>
                         {awaitingConfirm ? (
                           <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 space-y-2">
                             <p className="text-[10px] text-red-300 font-semibold">
