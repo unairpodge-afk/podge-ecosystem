@@ -184,30 +184,36 @@ export default function FarmIdClient() {
     setError('');
     setStatus('');
 
-    const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
-    const response = await fetch('/api/farmid', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json() as ApiResult;
-    setLoading(false);
+    try {
+      const formData = new FormData(event.currentTarget);
+      const payload = Object.fromEntries(formData.entries());
+      const response = await fetch('/api/farmid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({ error: 'Server tidak mengembalikan JSON valid.' })) as ApiResult;
 
-    if (!response.ok || !data.record || !data.privateToken) {
-      setError(data.error || 'Gagal membuat FarmID.');
-      return;
+      if (!response.ok || !data.record || !data.privateToken) {
+        setError(data.error || 'Gagal membuat FarmID.');
+        return;
+      }
+
+      setRecord(data.record);
+      setIdentity(data.identity || null);
+      setIdentityPrivateToken(data.identityPrivateToken || '');
+      setIdentityRecoveryCode(data.identityRecoveryCode || '');
+      setPrivateToken(data.privateToken);
+      setAccess(emptyAccess);
+      setHarvestStatus(data.record.harvest_status);
+      setPublicNote(data.record.public_note || '');
+      setStatus('FarmID dibuat. Simpan barcode private untuk petani, dan bagikan barcode publik untuk transparansi.');
+    } catch (generateError) {
+      const message = generateError instanceof Error ? generateError.message : String(generateError);
+      setError(`Gagal membuat FarmID: ${message}`);
+    } finally {
+      setLoading(false);
     }
-
-    setRecord(data.record);
-    setIdentity(data.identity || null);
-    setIdentityPrivateToken(data.identityPrivateToken || '');
-    setIdentityRecoveryCode(data.identityRecoveryCode || '');
-    setPrivateToken(data.privateToken);
-    setAccess(emptyAccess);
-    setHarvestStatus(data.record.harvest_status);
-    setPublicNote(data.record.public_note || '');
-    setStatus('FarmID dibuat. Simpan barcode private untuk petani, dan bagikan barcode publik untuk transparansi.');
   }
 
   async function claimFarmId() {

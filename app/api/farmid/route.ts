@@ -54,20 +54,19 @@ export async function POST(request: NextRequest) {
           private_token_hash,
           display_name,
           identity_type,
-          linked_farm_id,
           recovery_code_hash,
           metadata
         )
-        VALUES ($1, $2, $3, 'farmer', $4, $5, $6::jsonb)
+        VALUES ($1, $2, $3, 'farmer', $4, $5::jsonb)
         RETURNING *`,
         [
           createPodgePublicCode('farmer'),
           hashIdentitySecret(identityToken),
           farmerName,
-          farmId,
           hashIdentitySecret(recoveryCode),
           JSON.stringify({
             source: 'farmid_generate',
+            pending_linked_farm_id: farmId,
             cooperative_name: cooperativeName,
             village,
             district,
@@ -101,35 +100,48 @@ export async function POST(request: NextRequest) {
   );
   const farmerRecord = result.rows[0];
 
-  await appendLedgerEvent({
-    entityType: 'farmid',
-    entityId: farmId,
-    action: 'farmid.generated',
-    actor: { name: 'PODGE FarmID Self-Service' },
-    payload: {
-      farm_id: farmId,
-      identity_id: identity.identity_id,
-      identity_public_code: identity.public_code,
-      farmer_name: farmerName,
-      cooperative_name: cooperativeName,
-      village,
-      district,
-      province,
-      area_hectare: areaHectare,
-    },
-  });
+  const linkedIdentityResult = await query<PodgeIdentityRecord>(
+    `UPDATE podge_identities
+     SET linked_farm_id = $2, updated_at = NOW()
+     WHERE identity_id = $1
+     RETURNING *`,
+    [identity.identity_id, farmId],
+  );
+  identity = linkedIdentityResult.rows[0];
 
-  await appendLedgerEvent({
-    entityType: 'identity',
-    entityId: identity.public_code,
-    action: 'identity.generated_for_farmid',
-    actor: { name: 'PODGE FarmID Self-Service' },
-    payload: {
-      identity_id: identity.identity_id,
-      identity_type: identity.identity_type,
-      linked_farm_id: farmId,
-    },
-  });
+  try {
+    await appendLedgerEvent({
+      entityType: 'farmid',
+      entityId: farmId,
+      action: 'farmid.generated',
+      actor: { name: 'PODGE FarmID Self-Service' },
+      payload: {
+        farm_id: farmId,
+        identity_id: identity.identity_id,
+        identity_public_code: identity.public_code,
+        farmer_name: farmerName,
+        cooperative_name: cooperativeName,
+        village,
+        district,
+        province,
+        area_hectare: areaHectare,
+      },
+    });
+
+    await appendLedgerEvent({
+      entityType: 'identity',
+      entityId: identity.public_code,
+      action: 'identity.generated_for_farmid',
+      actor: { name: 'PODGE FarmID Self-Service' },
+      payload: {
+        identity_id: identity.identity_id,
+        identity_type: identity.identity_type,
+        linked_farm_id: farmId,
+      },
+    });
+  } catch (ledgerError) {
+    console.error('FarmID generated but ledger append failed:', ledgerError);
+  }
 
   return NextResponse.json({
     record: toPublicRecord(farmerRecord),
