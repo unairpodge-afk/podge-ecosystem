@@ -30,44 +30,52 @@ export async function POST(request: NextRequest) {
       
       const farmIdCode = `PODGE-FARM-2026-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-      // Insert Identity
+      // Insert Identity (without linked_farm_id first due to foreign key constraint)
       await query(`
         INSERT INTO podge_identities 
-        (identity_id, public_code, private_token_hash, display_name, identity_type, is_claimed, claimed_at, linked_farm_id)
-        VALUES ($1, $2, $3, $4, 'farmer', true, NOW(), $5)
-      `, [identityId, publicCode, privateTokenHash, displayName, farmIdCode]);
+        (identity_id, public_code, private_token_hash, display_name, identity_type, is_claimed, claimed_at)
+        VALUES ($1, $2, $3, $4, 'farmer', true, NOW())
+      `, [identityId, publicCode, privateTokenHash, displayName]);
 
       let verificationStatus = 'verified';
-      let publicStatus = 'Terverifikasi';
+      let publicStatus = 'live';
       
       if (type === 'medium') {
         verificationStatus = 'pending';
-        publicStatus = 'Menunggu Audit';
+        publicStatus = 'draft';
       } else if (type === 'bad') {
         verificationStatus = 'rejected';
-        publicStatus = 'Ditolak (Deforestasi)';
+        publicStatus = 'draft';
       }
 
-      // Insert Farm ID
+      // Insert Farm ID with correct columns
       await query(`
         INSERT INTO farmer_ids
-        (farm_id, farmer_name, identity_id, id_card_number, province, district, village, area_hectare, commodity, verification_status, public_status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        (farm_id, private_token_hash, farmer_name, cooperative_name, village, district, province, area_hectare, is_claimed, claimed_at, verification_status, public_status, identity_id, commodity)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), $9, $10, $11, $12)
       `, [
         farmIdCode,
+        privateTokenHash,
         displayName,
-        identityId,
-        `1234567890${String(i).padStart(6, '0')}`,
-        'Riau',
-        'Pelalawan',
+        'Koperasi Tani Sawit Lestari',
         'Pangkalan Kerinci',
+        'Pelalawan',
+        'Riau',
         (Math.random() * 5 + 1).toFixed(2), // 1 to 6 hectares
-        'Kelapa Sawit (TBS)',
         verificationStatus,
-        publicStatus
+        publicStatus,
+        identityId,
+        'Kelapa Sawit (TBS)'
       ]);
 
-      // Insert Traceability Log
+      // Update Identity to link to the newly created Farm ID
+      await query(`
+        UPDATE podge_identities
+        SET linked_farm_id = $1
+        WHERE identity_id = $2
+      `, [farmIdCode, identityId]);
+
+      // Insert Traceability Log (without non-existent farm_id column)
       const batchId = `BATCH-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       let traceStatus = 'Terverifikasi';
       if (type === 'medium') traceStatus = 'Menunggu Verifikasi';
@@ -77,11 +85,10 @@ export async function POST(request: NextRequest) {
 
       await query(`
         INSERT INTO traceability_logs
-        (batch_id, farm_id, farmer_name, tbs_weight_kg, pks_destination, status, blockchain_hash)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (batch_id, farmer_name, tbs_weight_kg, pks_destination, status, blockchain_hash)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `, [
         batchId,
-        farmIdCode,
         displayName,
         tbsWeight,
         'PT Riau Agromakmur',
