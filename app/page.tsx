@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
-import PodgeExplanation from './components/podge-explanation';
+import PodgeBlueprint from './components/podge-blueprint';
 import { getIdentitySession } from '@/lib/identity';
 
 export const dynamic = 'force-dynamic';
@@ -228,7 +228,7 @@ export default async function MainLandingPage() {
 
       </main>
 
-      <PodgeExplanation />
+      <PodgeBlueprint />
 
       {/* Footer */}
       <footer className="relative z-10 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col sm:flex-row items-center justify-between border-t border-emerald-900/10 text-xs text-gray-500">
