@@ -17,6 +17,7 @@ import {
   Sprout,
   Camera,
   Printer,
+  Download,
   Trash2,
   ArrowRight,
   User,
@@ -260,6 +261,10 @@ export default function FarmIdClient({
       }
 
       setStatus('Kartu Identitas Digital Petani (FarmID) berhasil dibuat.');
+      
+      // Redirect to the view mode page of the card
+      const viewUrl = `${window.location.origin}/governance/farmid?mode=view&id=${encodeURIComponent(data.record.farm_id)}`;
+      window.location.href = viewUrl;
     } catch (generateError) {
       const message = generateError instanceof Error ? generateError.message : String(generateError);
       setError(`Gagal membuat FarmID: ${message}`);
@@ -527,6 +532,63 @@ export default function FarmIdClient({
       ctx.font = 'bold 18px monospace';
       ctx.fillText(record?.farm_id || '', 50, 485);
 
+      // Draw KYC Status Stamp on Canvas
+      const kycStatus = record?.verification_status || 'pending';
+      ctx.save();
+      if (kycStatus === 'verified') {
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(420, 445, 320, 50, 8);
+        } else {
+          ctx.rect(420, 445, 320, 50);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('★ STATUS KYC: TERVERIFIKASI ★', 580, 475);
+      } else if (kycStatus === 'rejected') {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(420, 445, 320, 50, 8);
+        } else {
+          ctx.rect(420, 445, 320, 50);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✖ STATUS KYC: DITOLAK / INVALID ✖', 580, 475);
+      } else {
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.12)';
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(420, 445, 320, 50, 8);
+        } else {
+          ctx.rect(420, 445, 320, 50);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#eab308';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠ STATUS KYC: DALAM PROSES VERIFIKASI ⚠', 580, 475);
+      }
+      ctx.restore();
+
       // Affiliations
       ctx.fillStyle = 'rgba(16, 185, 129, 0.7)';
       ctx.font = '12px sans-serif';
@@ -658,9 +720,9 @@ export default function FarmIdClient({
               <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs text-yellow-200 flex items-start gap-2.5">
                 <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
                 <div>
-                  <p className="font-bold text-yellow-400">PROSES KYC (MENUNGGU VERIFIKASI)</p>
+                  <p className="font-bold text-yellow-400">PROSES KYC (SEDANG DALAM PROSES VERIFIKASI)</p>
                   <p className="mt-0.5 text-yellow-300/70">
-                    Kartu digital telah diterbitkan oleh petani namun masih menunggu verifikasi dokumen fisik oleh Auditor BPDPKS & PODGE.
+                    Kartu digital Anda saat ini sedang dalam proses verifikasi dokumen oleh verifikator BPDPKS & PODGE. Silakan tunggu hingga status KYC diperbarui.
                   </p>
                 </div>
               </div>
@@ -799,19 +861,10 @@ export default function FarmIdClient({
           <div className="w-full max-w-[500px] flex flex-wrap gap-3 items-center justify-center bg-black/30 p-4 rounded-2xl border border-emerald-950/80 no-print">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition shadow-md"
-            >
-              <Printer size={15} />
-              <span>Cetak Kartu (PDF)</span>
-            </button>
-
-            <button
-              type="button"
               onClick={downloadCardAsJpg}
-              className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+              className="flex-grow min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition shadow-md"
             >
-              <FileText size={15} />
+              <Download size={15} />
               <span>Unduh Kartu (JPG)</span>
             </button>
 
@@ -1044,7 +1097,7 @@ export default function FarmIdClient({
               disabled={loading}
               className="mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black py-3.5 text-sm font-extrabold transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Memproses Lahan...' : 'Cetak & Terbitkan Kartu Digital'}
+              {loading ? 'Memproses Lahan...' : 'Submit & Lihat Kartu Anggota'}
             </button>
           </form>
         </section>
@@ -1205,16 +1258,7 @@ export default function FarmIdClient({
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
                 title="Unduh JPG"
               >
-                <FileText size={15} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
-                title="Cetak PDF"
-              >
-                <Printer size={15} />
+                <Download size={15} />
               </button>
 
             </div>
@@ -1412,9 +1456,9 @@ export default function FarmIdClient({
                   <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs text-yellow-200 flex items-start gap-2.5">
                     <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
                     <div>
-                      <p className="font-bold text-yellow-400">PROSES KYC (MENUNGGU VERIFIKASI)</p>
+                      <p className="font-bold text-yellow-400">PROSES KYC (SEDANG DALAM PROSES VERIFIKASI)</p>
                       <p className="mt-0.5 text-yellow-300/70">
-                        Kartu digital telah diterbitkan oleh petani namun masih menunggu verifikasi dokumen fisik oleh Auditor BPDPKS & PODGE.
+                        Kartu digital Anda saat ini sedang dalam proses verifikasi dokumen oleh verifikator BPDPKS & PODGE. Silakan tunggu hingga status KYC diperbarui.
                       </p>
                     </div>
                   </div>
