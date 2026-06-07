@@ -52,6 +52,11 @@ export default async function DashboardPage() {
   let esgScore = 0;
   let completedChecks = 0;
   let checklist = { stdb: false, sppl: false, geofence: false, coop: false };
+    
+  // Dynamic metrics for company/PKS
+  let companyBatchCount = 110;
+  let companyComplianceRate = 94.8;
+  let companySukukCount = 6;
 
   // 1. Fetch details if it is a Farmer
   if (role === 'farmer') {
@@ -123,6 +128,77 @@ export default async function DashboardPage() {
       const compRes = await query("SELECT COUNT(*) FROM compliance_evaluations WHERE status = 'Terverifikasi'");
       totalComplianceCount = parseInt(compRes.rows[0].count, 10);
     } catch {}
+
+    if (role === 'company') {
+      const isCaseStudy = ['PT Borneo Palm Energy', 'PT Riau Agromakmur', 'PT Sumatera Palm Lestari'].includes(identity.display_name);
+      
+      if (isCaseStudy) {
+        if (identity.display_name === 'PT Borneo Palm Energy') {
+          companyBatchCount = 110;
+          companyComplianceRate = 94.8;
+          companySukukCount = 6;
+        } else if (identity.display_name === 'PT Riau Agromakmur') {
+          companyBatchCount = 145;
+          companyComplianceRate = 97.2;
+          companySukukCount = 4;
+        } else {
+          companyBatchCount = 92;
+          companyComplianceRate = 91.5;
+          companySukukCount = 3;
+        }
+      } else {
+        const customData = (identity.metadata as any)?.downstream;
+        const hasData = !!customData;
+        
+        // Calculate Batch Count
+        companyBatchCount = 0;
+        if (hasData && customData.step4?.idPks && customData.step4.idPks !== '-') {
+          companyBatchCount = 1;
+        }
+        try {
+          const pksId = customData?.step4?.idPks || '';
+          const logsRes = await query(
+            `SELECT COUNT(*) FROM traceability_logs 
+             WHERE LOWER(pks_destination) = LOWER($1) OR (LOWER(pks_destination) = LOWER($2) AND $2 <> '')`,
+            [identity.display_name, pksId]
+          );
+          companyBatchCount += parseInt(logsRes.rows[0].count, 10);
+        } catch (err) {
+          console.error('Gagal mengambil count logs perusahaan:', err);
+        }
+        
+        // Calculate Compliance Rate
+        companyComplianceRate = 0;
+        try {
+          const compRes = await query(
+            `SELECT audit_score FROM compliance_evaluations 
+             WHERE LOWER(company_name) = LOWER($1) AND status = 'Terverifikasi'
+             ORDER BY audit_date DESC LIMIT 1`,
+            [identity.display_name]
+          );
+          if (compRes.rows.length > 0) {
+            companyComplianceRate = Number(compRes.rows[0].audit_score);
+          } else if (hasData) {
+            companyComplianceRate = 85.0; // Default initial compliance score for custom company
+          }
+        } catch (err) {
+          console.error('Gagal mengambil data compliance perusahaan:', err);
+        }
+        
+        // Calculate Sukuk Count
+        companySukukCount = 0;
+        try {
+          const sukukRes = await query(
+            `SELECT COUNT(*) FROM green_sukuk_projects 
+             WHERE LOWER(project_name) LIKE LOWER($1) OR (LOWER(project_name) LIKE LOWER($2) AND $2 <> '')`,
+            [`%${identity.display_name}%`, `%${customData?.step4?.idPks || ''}%`]
+          );
+          companySukukCount = parseInt(sukukRes.rows[0].count, 10);
+        } catch (err) {
+          console.error('Gagal mengambil count sukuk perusahaan:', err);
+        }
+      }
+    }
   }
 
   return (
@@ -492,17 +568,19 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
               <p className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">Batch TBS Terverifikasi</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">110 Batch</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">{companyBatchCount} Batch</p>
               <p className="text-xs text-blue-200/55 mt-1">Total pengiriman TBS masuk pabrik</p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
               <p className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">Rasio Kepatuhan NDPE/ESG</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">94.8%</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">
+                {companyComplianceRate === 0 ? 'Belum Teraudit' : `${companyComplianceRate.toFixed(1)}%`}
+              </p>
               <p className="text-xs text-blue-200/55 mt-1">Memenuhi kriteria bebas deforestasi</p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
               <p className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">Green Sukuk Portfolio</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">6 Proyek</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">{companySukukCount} Proyek</p>
               <p className="text-xs text-blue-200/55 mt-1">Proyek pembiayaan hijau terdaftar</p>
             </div>
           </div>
