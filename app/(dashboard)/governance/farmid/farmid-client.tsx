@@ -70,6 +70,8 @@ type ApiResult = {
 
 type FarmIdClientProps = {
   initialLinkedFarmId?: string | null;
+  isRegistered?: boolean;
+  identityType?: string | null;
 };
 
 const emptyAccess: AccessState = {
@@ -96,7 +98,11 @@ function qrUrl(value: string) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(value)}`;
 }
 
-export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClientProps) {
+export default function FarmIdClient({
+  initialLinkedFarmId = null,
+  isRegistered = false,
+  identityType = null,
+}: FarmIdClientProps) {
   const searchParams = useSearchParams();
   const queryId = searchParams.get('id') || initialLinkedFarmId || '';
   const queryToken = searchParams.get('token') || '';
@@ -130,6 +136,7 @@ export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClien
   const isClaimMode = queryMode === 'claim' && privateToken;
   const isViewMode = queryMode === 'view';
   const hasLinkedFarmId = Boolean(initialLinkedFarmId);
+  const isFarmerIdentity = identityType === 'farmer';
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -204,6 +211,22 @@ export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClien
 
   async function generateFarmId(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!isRegistered) {
+      setError('Silakan daftar dan masuk terlebih dahulu sebelum membuat FarmID.');
+      return;
+    }
+
+    if (!isFarmerIdentity) {
+      setError('FarmID hanya dapat dibuat oleh akun Petani. Silakan daftar/masuk sebagai Petani Mandiri.');
+      return;
+    }
+
+    if (hasLinkedFarmId) {
+      setError('Akun ini sudah memiliki FarmID. Gunakan menu Lihat Kartu Anggota.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setStatus('');
@@ -553,7 +576,9 @@ export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClien
   const cardDistrict = record ? record.district : (formDistrict || 'Kecamatan');
   const cardProvince = record ? record.province : (formProvince || 'Provinsi');
   const cardFarmId = record ? record.farm_id : `PODGE-FARM-${new Date().getFullYear()}-XXXXXXXX`;
-  const showRegistrationForm = !hasLinkedFarmId && !record;
+  const showRegistrationForm = isRegistered && isFarmerIdentity && !hasLinkedFarmId && !record;
+  const showRegisterPrompt = !isRegistered && !record && !isViewMode;
+  const showRolePrompt = isRegistered && !isFarmerIdentity && !record && !isViewMode;
   const showClaimPanel = Boolean(record && (isClaimMode || access.canEdit || access.canClaim));
 
   // --- RENDERING DEDICATED VIEW MODE (TAB BARU - HANYA KARTU DIGITAL FINAL) ---
@@ -868,6 +893,50 @@ export default function FarmIdClient({ initialLinkedFarmId = null }: FarmIdClien
           <ShieldAlert size={16} className="text-red-400 shrink-0" />
           <span>{error}</span>
         </div>
+      )}
+
+      {showRegisterPrompt && (
+        <section className="glass-panel rounded-2xl border border-yellow-500/25 bg-yellow-950/10 p-6 sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 shrink-0 text-yellow-300" size={20} />
+              <div>
+                <h2 className="font-space text-xl font-bold text-yellow-100">Daftar dulu sebelum membuat FarmID</h2>
+                <p className="mt-1 text-sm leading-6 text-yellow-100/70">
+                  Mulai sekarang FarmID hanya bisa dibuat oleh user yang sudah terdaftar dan masuk ke akun PODGE-ID.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-black transition hover:bg-emerald-400"
+              >
+                Daftar Sekarang
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-xl border border-emerald-700/60 px-4 py-2.5 text-xs font-bold text-emerald-50 transition hover:bg-emerald-950/60"
+              >
+                Sudah Terdaftar, Masuk
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {showRolePrompt && (
+        <section className="glass-panel rounded-2xl border border-yellow-500/25 bg-yellow-950/10 p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 shrink-0 text-yellow-300" size={20} />
+            <div>
+              <h2 className="font-space text-xl font-bold text-yellow-100">FarmID khusus akun Petani</h2>
+              <p className="mt-1 text-sm leading-6 text-yellow-100/70">
+                Akun yang sedang masuk bukan akun Petani Mandiri. Silakan gunakan akun petani untuk mengisi data lahan FarmID.
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Main Grid: Form on left, Card Visual & Controls on right */}

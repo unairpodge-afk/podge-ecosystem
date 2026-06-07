@@ -10,7 +10,11 @@ export default async function FarmIdPage() {
 
   return (
     <Suspense fallback={<div className="text-sm text-emerald-200/60">Memuat FarmID...</div>}>
-      <FarmIdClient initialLinkedFarmId={linkedFarmId} />
+      <FarmIdClient
+        initialLinkedFarmId={linkedFarmId}
+        isRegistered={Boolean(identity)}
+        identityType={identity?.identity_type || null}
+      />
     </Suspense>
   );
 }

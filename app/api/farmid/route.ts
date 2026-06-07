@@ -9,11 +9,8 @@ import {
 } from '@/lib/farmid';
 import { query } from '@/lib/db';
 import {
-  createPodgePrivateToken,
-  createPodgePublicCode,
-  createPodgeRecoveryCode,
   ensurePodgeIdentitiesTable,
-  hashIdentitySecret,
+  getIdentitySession,
   toPublicIdentity,
   type PodgeIdentityRecord,
 } from '@/lib/identity';
@@ -29,65 +26,41 @@ function asNumber(value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
+  const activeIdentity = await getIdentitySession();
+
+  if (!activeIdentity) {
+    return NextResponse.json(
+      { error: 'Silakan daftar dan masuk terlebih dahulu sebelum membuat FarmID.' },
+      { status: 401 },
+    );
+  }
+
+  if (activeIdentity.identity_type !== 'farmer') {
+    return NextResponse.json(
+      { error: 'FarmID hanya dapat dibuat oleh akun Petani Mandiri.' },
+      { status: 403 },
+    );
+  }
+
+  if (activeIdentity.linked_farm_id) {
+    return NextResponse.json(
+      { error: 'Akun ini sudah memiliki FarmID. Gunakan menu Lihat Kartu Anggota.' },
+      { status: 409 },
+    );
+  }
+
   await ensureFarmerIdsTable();
   await ensurePodgeIdentitiesTable();
 
   const body = await request.json();
   const farmId = createFarmId();
   const privateToken = createPrivateToken();
-  const identityToken = createPodgePrivateToken();
-  const recoveryCode = createPodgeRecoveryCode();
   const farmerName = asText(body.farmerName, 'Petani PODGE');
   const cooperativeName = asText(body.cooperativeName, 'Koperasi Belum Diisi');
   const village = asText(body.village, 'Desa Belum Diisi');
   const district = asText(body.district, 'Kabupaten Belum Diisi');
   const province = asText(body.province, 'Provinsi Belum Diisi');
   const areaHectare = asNumber(body.areaHectare);
-
-  let identity: PodgeIdentityRecord | null = null;
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    try {
-      const identityResult = await query<PodgeIdentityRecord>(
-        `INSERT INTO podge_identities (
-          public_code,
-          private_token_hash,
-          display_name,
-          identity_type,
-          recovery_code_hash,
-          metadata
-        )
-        VALUES ($1, $2, $3, 'farmer', $4, $5::jsonb)
-        RETURNING *`,
-        [
-          createPodgePublicCode('farmer'),
-          hashIdentitySecret(identityToken),
-          farmerName,
-          hashIdentitySecret(recoveryCode),
-          JSON.stringify({
-            source: 'farmid_generate',
-            pending_linked_farm_id: farmId,
-            cooperative_name: cooperativeName,
-            village,
-            district,
-            province,
-          }),
-        ],
-      );
-      identity = identityResult.rows[0];
-      break;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      if (!message.includes('duplicate') && !message.includes('unique')) {
-        throw error;
-      }
-    }
-  }
-
-  if (!identity) {
-    return NextResponse.json({ error: 'Gagal membuat PODGE-ID petani. Coba lagi.' }, { status: 500 });
-  }
 
   const result = await query<FarmerIdRecord>(
     `INSERT INTO farmer_ids (
@@ -96,18 +69,50 @@ export async function POST(request: NextRequest) {
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING *`,
-    [farmId, hashSecret(privateToken), farmerName, cooperativeName, village, district, province, areaHectare, identity.identity_id],
+    [
+      farmId,
+      hashSecret(privateToken),
+      farmerName,
+      cooperativeName,
+      village,
+      district,
+      province,
+      areaHectare,
+      activeIdentity.identity_id,
+    ],
   );
   const farmerRecord = result.rows[0];
 
   const linkedIdentityResult = await query<PodgeIdentityRecord>(
     `UPDATE podge_identities
-     SET linked_farm_id = $2, updated_at = NOW()
+     SET linked_farm_id = $2,
+         display_name = COALESCE(NULLIF($3, ''), display_name),
+         metadata = metadata || $4::jsonb,
+         updated_at = NOW()
      WHERE identity_id = $1
+       AND linked_farm_id IS NULL
      RETURNING *`,
-    [identity.identity_id, farmId],
+    [
+      activeIdentity.identity_id,
+      farmId,
+      farmerName,
+      JSON.stringify({
+        farmid_generated_at: new Date().toISOString(),
+        cooperative_name: cooperativeName,
+        village,
+        district,
+        province,
+      }),
+    ],
   );
-  identity = linkedIdentityResult.rows[0];
+  const identity = linkedIdentityResult.rows[0];
+
+  if (!identity) {
+    return NextResponse.json(
+      { error: 'Akun ini sudah memiliki FarmID atau tidak bisa ditautkan.' },
+      { status: 409 },
+    );
+  }
 
   try {
     await appendLedgerEvent({
@@ -131,8 +136,8 @@ export async function POST(request: NextRequest) {
     await appendLedgerEvent({
       entityType: 'identity',
       entityId: identity.public_code,
-      action: 'identity.generated_for_farmid',
-      actor: { name: 'PODGE FarmID Self-Service' },
+      action: 'identity.linked_to_farmid',
+      actor: { name: farmerName },
       payload: {
         identity_id: identity.identity_id,
         identity_type: identity.identity_type,
@@ -147,8 +152,6 @@ export async function POST(request: NextRequest) {
     record: toPublicRecord(farmerRecord),
     privateToken,
     identity: toPublicIdentity(identity),
-    identityPrivateToken: identityToken,
-    identityRecoveryCode: recoveryCode,
   });
 }
 
