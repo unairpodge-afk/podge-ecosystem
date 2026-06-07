@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import TokenManager from './token-manager';
 import DownstreamViewer from './downstream-viewer';
+import HumaneAICompanion from '@/app/components/humane-ai-companion';
 import {
   Fingerprint,
   Layers,
@@ -470,6 +471,9 @@ export default async function DashboardPage() {
             publicCode={identity.public_code}
             farmId={identity.linked_farm_id}
           />
+          
+          {/* Humane AI Companion Widget */}
+          <HumaneAICompanion farmerName={identity.display_name} />
         </div>
       )}
 

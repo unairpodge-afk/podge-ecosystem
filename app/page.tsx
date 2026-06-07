@@ -61,6 +61,9 @@ export default async function MainLandingPage() {
           <Link href="/value-creation/green-sukuk" className="text-gray-400 hover:text-emerald-400 transition-colors font-space tracking-wide">
             Green Sukuk Portal
           </Link>
+          <Link href="/public-monitoring" className="text-emerald-400 hover:text-white transition-colors font-space tracking-wide font-bold">
+            Pengawasan Masyarakat
+          </Link>
           <span className="h-4 w-[1px] bg-emerald-900/40"></span>
           <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -148,6 +151,9 @@ export default async function MainLandingPage() {
             )}
             <Link href="/value-creation/green-sukuk" className="border border-emerald-800/60 hover:bg-emerald-950/30 text-white text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide">
               Explore Green Financing
+            </Link>
+            <Link href="/public-monitoring" className="border border-emerald-500/60 hover:bg-emerald-500/20 text-emerald-400 text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              Pengawasan Masyarakat
             </Link>
           </div>
 
