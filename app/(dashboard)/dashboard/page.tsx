@@ -202,10 +202,19 @@ export default async function DashboardPage() {
   }
 
   // Contextual next-action info for each role
+  const isFarmVerified = farmRecord?.verification_status === 'verified' 
+    || farmRecord?.public_status === 'Terverifikasi' 
+    || farmRecord?.public_status === 'live';
+  const isFarmRejected = farmRecord?.verification_status === 'rejected';
+
   const farmerNextAction = !farmRecord
     ? { msg: 'Daftarkan lahan sawit Anda untuk mulai mendapat premi harga TBS.', href: '/governance/farmid', cta: 'Klaim FarmID Sekarang →' }
+    : isFarmRejected
+    ? { msg: 'Klaim FarmID Anda ditolak. Periksa data dan ajukan ulang dengan dokumen yang benar.', href: '/governance/farmid', cta: 'Ajukan Ulang FarmID →' }
+    : !isFarmVerified
+    ? { msg: 'FarmID Anda sedang menunggu verifikasi KYC oleh admin. Anda akan dapat mengakses fitur penuh setelah disetujui.', href: '/governance/farmid', cta: 'Cek Status FarmID →' }
     : totalLogsCount === 0
-    ? { msg: 'FarmID sudah aktif! Saatnya catat kiriman pertama buah sawit Anda.', href: '/governance/traceability', cta: 'Catat Kiriman TBS →' }
+    ? { msg: 'FarmID terverifikasi! Saatnya catat kiriman pertama buah sawit Anda.', href: '/governance/traceability', cta: 'Catat Kiriman TBS →' }
     : esgScore < 75
     ? { msg: `Skor ESG Anda ${esgScore}%. Penuhi syarat sertifikasi untuk buka akses replanting.`, href: '/governance/farmid', cta: 'Lengkapi Data Lahan →' }
     : null;
