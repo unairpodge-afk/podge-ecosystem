@@ -85,12 +85,9 @@ export default async function MainLandingPage() {
               <Link href="/admin/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
                 ADMIN LOGIN
               </Link>
-              <Link href="/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
-                MASUK / DAFTAR
-              </Link>
               <Link href="/login" className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-xs font-bold text-white rounded-lg group bg-gradient-to-br from-emerald-500 to-green-800 group-hover:from-emerald-500 group-hover:to-green-800 hover:text-white focus:ring-4 focus:outline-none focus:ring-green-800">
                 <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-black rounded-md group-hover:bg-opacity-0 font-space tracking-wider">
-                  MASUK APLIKASI
+                  MASUK / DAFTAR
                 </span>
               </Link>
             </>
