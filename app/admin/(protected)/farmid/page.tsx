@@ -18,41 +18,75 @@ export default async function AdminFarmIdOversightPage() {
   const { admin } = await requireAdmin();
   await ensureFarmerIdsTable();
 
-  // Server Action for KYC Verification
-  async function performKycAudit(formData: FormData) {
+  // Server Actions for KYC Verification bound via formAction
+  async function verifyKycAction(formData: FormData) {
     'use server';
     const farmId = formData.get('farmId') as string;
-    const action = formData.get('action') as string; // 'verify' or 'reject' or 'reset'
     const note = formData.get('note') as string || '';
     const { admin: activeAdmin } = await requireAdmin();
-
-    let newStatus = 'pending';
-    if (action === 'verify') newStatus = 'verified';
-    if (action === 'reject') newStatus = 'rejected';
 
     try {
       await query(`
         UPDATE farmer_ids
         SET 
-          verification_status = $1,
-          verified_at = CASE WHEN $1 = 'pending' THEN NULL ELSE NOW() END,
-          verified_by = CASE WHEN $1 = 'pending' THEN NULL ELSE $2 END,
-          verification_note = $3,
+          verification_status = 'verified',
+          verified_at = NOW(),
+          verified_by = $1,
+          verification_note = $2,
+          public_status = 'live',
+          public_live_at = NOW(),
           updated_at = NOW()
-        WHERE farm_id = $4
-      `, [newStatus, activeAdmin.admin_id, note, farmId]);
-
-      // Set public_status to 'live' if verified to make the verification immediately viewable
-      if (newStatus === 'verified') {
-        await query(
-          "UPDATE farmer_ids SET public_status = 'live', public_live_at = NOW() WHERE farm_id = $1",
-          [farmId]
-        );
-      }
+        WHERE farm_id = $3
+      `, [activeAdmin.admin_id, note, farmId]);
     } catch (err) {
-      console.error('Gagal melakukan KYC Audit:', err);
+      console.error('Gagal memverifikasi KYC:', err);
     }
+    revalidatePath('/admin/farmid');
+  }
 
+  async function rejectKycAction(formData: FormData) {
+    'use server';
+    const farmId = formData.get('farmId') as string;
+    const note = formData.get('note') as string || '';
+    const { admin: activeAdmin } = await requireAdmin();
+
+    try {
+      await query(`
+        UPDATE farmer_ids
+        SET 
+          verification_status = 'rejected',
+          verified_at = NOW(),
+          verified_by = $1,
+          verification_note = $2,
+          updated_at = NOW()
+        WHERE farm_id = $3
+      `, [activeAdmin.admin_id, note, farmId]);
+    } catch (err) {
+      console.error('Gagal menolak KYC:', err);
+    }
+    revalidatePath('/admin/farmid');
+  }
+
+  async function resetKycAction(formData: FormData) {
+    'use server';
+    const farmId = formData.get('farmId') as string;
+    const note = formData.get('note') as string || '';
+    const { admin: activeAdmin } = await requireAdmin();
+
+    try {
+      await query(`
+        UPDATE farmer_ids
+        SET 
+          verification_status = 'pending',
+          verified_at = NULL,
+          verified_by = NULL,
+          verification_note = $1,
+          updated_at = NOW()
+        WHERE farm_id = $2
+      `, [note, farmId]);
+    } catch (err) {
+      console.error('Gagal me-reset KYC:', err);
+    }
     revalidatePath('/admin/farmid');
   }
 
@@ -177,61 +211,58 @@ export default async function AdminFarmIdOversightPage() {
                     {record.verification_note || '-'}
                   </td>
                   
-                  {/* KYC Verification Forms */}
-                  <td className="px-5 py-4">
-                    <form action={performKycAudit} className="flex items-center justify-center gap-2">
-                      <input type="hidden" name="farmId" value={record.farm_id} />
-                      
-                      {record.verification_status === 'pending' ? (
-                        <>
-                          <input
-                            type="text"
-                            name="note"
-                            required
-                            placeholder="Catatan KTP/SHM sesuai..."
-                            className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
-                          />
-                          <button
-                            type="submit"
-                            name="action"
-                            value="verify"
-                            title="Setujui Verifikasi KYC"
-                            className="p-1.5 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition"
-                          >
-                            <Check size={14} />
-                          </button>
-                          <button
-                            type="submit"
-                            name="action"
-                            value="reject"
-                            title="Tolak Verifikasi KYC"
-                            className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition"
-                          >
-                            <X size={14} />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            name="note"
-                            placeholder="Alasan reset/evaluasi..."
-                            className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
-                          />
-                          <button
-                            type="submit"
-                            name="action"
-                            value="reset"
-                            title="Reset Status Verifikasi ke Pending"
-                            className="p-1.5 rounded-lg border border-yellow-700/60 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/50 transition flex items-center gap-1 text-[10px] font-bold"
-                          >
-                            <Undo2 size={12} />
-                            Reset
-                          </button>
-                        </div>
-                      )}
-                    </form>
-                  </td>
+                   {/* KYC Verification Forms */}
+                   <td className="px-5 py-4">
+                     <form className="flex items-center justify-center gap-2">
+                       <input type="hidden" name="farmId" value={record.farm_id} />
+                       
+                       {record.verification_status === 'pending' ? (
+                         <>
+                           <input
+                             type="text"
+                             name="note"
+                             required
+                             placeholder="Catatan KTP/SHM sesuai..."
+                             className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
+                           />
+                           <button
+                             formAction={verifyKycAction}
+                             type="submit"
+                             title="Setujui Verifikasi KYC"
+                             className="p-1.5 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition cursor-pointer"
+                           >
+                             <Check size={14} />
+                           </button>
+                           <button
+                             formAction={rejectKycAction}
+                             type="submit"
+                             title="Tolak Verifikasi KYC"
+                             className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer"
+                           >
+                             <X size={14} />
+                           </button>
+                         </>
+                       ) : (
+                         <div className="flex items-center gap-2">
+                           <input
+                             type="text"
+                             name="note"
+                             placeholder="Alasan reset/evaluasi..."
+                             className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
+                           />
+                           <button
+                             formAction={resetKycAction}
+                             type="submit"
+                             title="Reset Status Verifikasi ke Pending"
+                             className="p-1.5 rounded-lg border border-yellow-700/60 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/50 transition flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                           >
+                             <Undo2 size={12} />
+                             Reset
+                           </button>
+                         </div>
+                       )}
+                     </form>
+                   </td>
 
                   <td className="px-5 py-4">
                     <Link
