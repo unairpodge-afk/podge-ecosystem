@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureFarmerIdsTable, hashSecret, toPublicRecord, type FarmerIdRecord } from '@/lib/farmid';
 import { query } from '@/lib/db';
+import { appendLedgerEvent } from '@/lib/ledger';
 
 export async function POST(request: NextRequest) {
   await ensureFarmerIdsTable();
@@ -41,9 +42,25 @@ export async function POST(request: NextRequest) {
      RETURNING *`,
     [farmId, harvestStatus, publicNote],
   );
+  const updatedRecord = update.rows[0];
+
+  await appendLedgerEvent({
+    entityType: 'farmid',
+    entityId: farmId,
+    action: 'farmid.public_updated',
+    actor: { name: 'FarmID Private QR Holder' },
+    payload: {
+      farm_id: farmId,
+      identity_id: updatedRecord.identity_id,
+      harvest_status: harvestStatus,
+      public_status: updatedRecord.public_status,
+      public_live_at: updatedRecord.public_live_at,
+      has_public_note: Boolean(publicNote),
+    },
+  });
 
   return NextResponse.json({
-    record: toPublicRecord(update.rows[0]),
+    record: toPublicRecord(updatedRecord),
     message: 'Data publik FarmID berhasil diperbarui.',
   });
 }

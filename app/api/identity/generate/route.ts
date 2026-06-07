@@ -11,6 +11,7 @@ import {
   type PodgeIdentityRecord,
   type PodgeIdentityType,
 } from '@/lib/identity';
+import { appendLedgerEvent } from '@/lib/ledger';
 
 const identityTypes: PodgeIdentityType[] = [
   'farmer',
@@ -98,6 +99,24 @@ export async function POST(request: NextRequest) {
           [identity.identity_id, linkedFarmId],
         );
       }
+
+      await appendLedgerEvent({
+        entityType: 'identity',
+        entityId: identity.public_code,
+        action: 'identity.generated_by_admin',
+        actor: {
+          adminId: admin.admin_id,
+          roleId: admin.role_id,
+          name: admin.full_name,
+        },
+        payload: {
+          identity_id: identity.identity_id,
+          identity_type: identity.identity_type,
+          role_id: identity.role_id,
+          linked_farm_id: identity.linked_farm_id,
+          has_metadata_note: Boolean(metadataNote),
+        },
+      });
 
       return NextResponse.json({
         identity: toPublicIdentity(identity),

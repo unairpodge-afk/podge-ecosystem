@@ -7,6 +7,7 @@ import {
   toPublicIdentity,
   type PodgeIdentityRecord,
 } from '@/lib/identity';
+import { appendLedgerEvent } from '@/lib/ledger';
 
 function asText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -50,6 +51,18 @@ export async function POST(request: NextRequest) {
       [identity.identity_id, deviceHash],
     );
     activeIdentity = update.rows[0];
+
+    await appendLedgerEvent({
+      entityType: 'identity',
+      entityId: activeIdentity.public_code,
+      action: 'identity.claimed',
+      actor: { name: 'PODGE-ID Private QR Holder' },
+      payload: {
+        identity_id: activeIdentity.identity_id,
+        identity_type: activeIdentity.identity_type,
+        linked_farm_id: activeIdentity.linked_farm_id,
+      },
+    });
   }
 
   const sameDevice = activeIdentity.claimed_device_hash === deviceHash;
@@ -62,6 +75,19 @@ export async function POST(request: NextRequest) {
   }
 
   await setIdentitySession(activeIdentity);
+
+  await appendLedgerEvent({
+    entityType: 'identity',
+    entityId: activeIdentity.public_code,
+    action: 'identity.access_granted',
+    actor: { name: 'PODGE-ID Private QR Holder' },
+    payload: {
+      identity_id: activeIdentity.identity_id,
+      identity_type: activeIdentity.identity_type,
+      linked_farm_id: activeIdentity.linked_farm_id,
+      role_id: activeIdentity.role_id,
+    },
+  });
 
   return NextResponse.json({
     identity: toPublicIdentity(activeIdentity),

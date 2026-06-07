@@ -17,6 +17,7 @@ import {
   toPublicIdentity,
   type PodgeIdentityRecord,
 } from '@/lib/identity';
+import { appendLedgerEvent } from '@/lib/ledger';
 
 function asText(value: unknown, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
@@ -98,9 +99,40 @@ export async function POST(request: NextRequest) {
     RETURNING *`,
     [farmId, hashSecret(privateToken), farmerName, cooperativeName, village, district, province, areaHectare, identity.identity_id],
   );
+  const farmerRecord = result.rows[0];
+
+  await appendLedgerEvent({
+    entityType: 'farmid',
+    entityId: farmId,
+    action: 'farmid.generated',
+    actor: { name: 'PODGE FarmID Self-Service' },
+    payload: {
+      farm_id: farmId,
+      identity_id: identity.identity_id,
+      identity_public_code: identity.public_code,
+      farmer_name: farmerName,
+      cooperative_name: cooperativeName,
+      village,
+      district,
+      province,
+      area_hectare: areaHectare,
+    },
+  });
+
+  await appendLedgerEvent({
+    entityType: 'identity',
+    entityId: identity.public_code,
+    action: 'identity.generated_for_farmid',
+    actor: { name: 'PODGE FarmID Self-Service' },
+    payload: {
+      identity_id: identity.identity_id,
+      identity_type: identity.identity_type,
+      linked_farm_id: farmId,
+    },
+  });
 
   return NextResponse.json({
-    record: toPublicRecord(result.rows[0]),
+    record: toPublicRecord(farmerRecord),
     privateToken,
     identity: toPublicIdentity(identity),
     identityPrivateToken: identityToken,
