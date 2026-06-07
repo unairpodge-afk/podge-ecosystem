@@ -1265,22 +1265,12 @@ export default function FarmIdClient({
                 <h3 className="font-space text-sm font-bold text-emerald-300">Satu Barcode Anggota</h3>
               </div>
               <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
-                Kartu digital Anda memiliki **satu Barcode Publik** yang tertera di sebelah bawah. Barcode ini memiliki fungsi ganda: untuk pelacakan sawit oleh pembeli/pabrik, sekaligus untuk memicu pengiriman kode masuk (OTP) rahasia ke HP Anda.
+                Kartu digital Anda memiliki **satu Barcode Publik** yang tertera pada Kartu Identitas Digital Petani di bagian atas. Barcode ini memiliki fungsi ganda: untuk pelacakan sawit oleh pembeli/pabrik, sekaligus untuk memicu pengiriman kode masuk (OTP) rahasia ke HP Anda.
               </p>
             </div>
-            {record?.farm_id || cardFarmId ? (
-              <div className="pt-4 flex flex-col items-center border-t border-emerald-950/80 mt-4">
-                <div className="bg-white p-1.5 rounded-lg shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrUrl(publicLink || `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record?.farm_id || cardFarmId)}`)} alt="Barcode Kartu Anggota" className="h-28 w-28" />
-                </div>
-                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider text-center">BARCODE KARTU ANGGOTA</span>
-              </div>
-            ) : (
-              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-400/50 italic text-center">
-                Belum ada data Farm ID.
-              </div>
-            )}
+            <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-300/80 leading-normal">
+              ℹ️ Barcode yang dapat digunakan adalah barcode yang menyatu pada gambar Kartu Identitas Digital Petani Anda di bagian atas halaman ini.
+            </div>
           </div>
 
           {/* Step 2 */}
