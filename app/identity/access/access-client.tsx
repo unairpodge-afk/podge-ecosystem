@@ -91,7 +91,9 @@ export default function IdentityAccessClient() {
   const queryId = searchParams.get('id') || '';
   const queryToken = searchParams.get('token') || '';
 
-  const [activeTab, setActiveTab] = useState<Tab>('access');
+  // Tab can be 'barcode-otp', 'manual-token', or 'recovery'
+  type TabType = 'barcode-otp' | 'manual-token' | 'recovery';
+  const [activeTab, setActiveTab] = useState<TabType>('barcode-otp');
   const [publicCode, setPublicCode] = useState(queryId);
   const [token, setToken] = useState(queryToken);
   const [deviceKey, setDeviceKey] = useState('');
@@ -108,6 +110,15 @@ export default function IdentityAccessClient() {
   const [qrScanning, setQrScanning] = useState(false);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
   const [qrError, setQrError] = useState<string | null>(null);
+
+  // OTP process states
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [devOtp, setDevOtp] = useState('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setDeviceKey(getDeviceKey()));
@@ -128,6 +139,67 @@ export default function IdentityAccessClient() {
     setResult(data);
   }, [deviceKey, publicCode, token]);
 
+  const requestOtp = useCallback(async (activePublicCode = publicCode) => {
+    if (!activePublicCode) {
+      setQrError('Silakan masukkan Farm ID / Public Code terlebih dahulu.');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError(null);
+    setQrError(null);
+    setQrMessage(null);
+    setOtpSuccess(null);
+    try {
+      const response = await fetch('/api/identity/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicCode: activePublicCode }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setOtpError(data.error || 'Gagal mengirimkan kode OTP.');
+        return;
+      }
+      setOtpSent(true);
+      setMaskedPhone(data.maskedPhone || 'nomor HP Anda');
+      if (data.devOtp) {
+        setDevOtp(data.devOtp);
+      }
+      setOtpSuccess(data.message || 'OTP berhasil dikirim.');
+    } catch {
+      setOtpError('Terjadi kesalahan jaringan saat meminta OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
+  }, [publicCode]);
+
+  const verifyOtp = useCallback(async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (!otpCode || !deviceKey) return;
+    setLoading(true);
+    setResult(null);
+    setOtpError(null);
+    setOtpSuccess(null);
+    try {
+      const response = await fetch('/api/identity/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicCode, otpCode, deviceKey }),
+      });
+      const data = await response.json() as AccessResult;
+      setLoading(false);
+      setResult(data);
+      if (!response.ok) {
+        setOtpError(data.error || 'Verifikasi OTP gagal.');
+      } else {
+        setOtpSuccess('Login via OTP berhasil!');
+      }
+    } catch {
+      setLoading(false);
+      setOtpError('Terjadi kesalahan jaringan saat memproses verifikasi OTP.');
+    }
+  }, [publicCode, otpCode, deviceKey]);
+
   const handleQrUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -135,6 +207,8 @@ export default function IdentityAccessClient() {
     setQrScanning(true);
     setQrMessage(null);
     setQrError(null);
+    setOtpError(null);
+    setOtpSuccess(null);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -155,16 +229,12 @@ export default function IdentityAccessClient() {
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (code) {
             const parsed = parseQrContent(code.data);
-            if (parsed.publicCode && parsed.token) {
+            if (parsed.publicCode) {
               setPublicCode(parsed.publicCode);
-              setToken(parsed.token);
-              setQrMessage('Barcode Pribadi (Barcode 1) berhasil diverifikasi. Sedang masuk...');
-              void accessIdentity(parsed.publicCode, parsed.token);
-            } else if (parsed.publicCode) {
-              setPublicCode(parsed.publicCode);
-              setQrMessage('Barcode Publik (Barcode 2) terdeteksi. Silakan masukkan Private Token Anda secara manual.');
+              setQrMessage('Kartu Digital Anggota terdeteksi. Mengirimkan kode OTP...');
+              void requestOtp(parsed.publicCode);
             } else {
-              setQrError('QR Code terdeteksi tetapi tidak berisi format PODGE-ID yang didukung.');
+              setQrError('QR Code terdeteksi tetapi tidak berisi format Farm ID / PODGE-ID yang valid.');
             }
           } else {
             setQrError('Tidak dapat mendeteksi Barcode atau QR Code yang valid. Pastikan gambar jelas dan tidak terpotong.');
@@ -182,7 +252,7 @@ export default function IdentityAccessClient() {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
-  }, [accessIdentity]);
+  }, [requestOtp]);
 
   useEffect(() => {
     if (queryId && queryToken && deviceKey) {
@@ -291,86 +361,219 @@ export default function IdentityAccessClient() {
             <div className="flex bg-black/40 border-b border-emerald-900/60">
               <button
                 type="button"
-                onClick={() => { setActiveTab('access'); setResult(null); }}
-                className={`flex-1 py-3.5 text-center text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                  activeTab === 'access'
+                onClick={() => { setActiveTab('barcode-otp'); setResult(null); setOtpSent(false); setOtpError(null); setOtpSuccess(null); }}
+                className={`flex-1 py-3.5 text-center text-[11px] sm:text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                  activeTab === 'barcode-otp'
                     ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-400'
                     : 'text-emerald-400/50 hover:text-emerald-200'
                 }`}
               >
-                <LockKeyhole size={15} />
-                Masuk dengan Token
+                <QrCode size={14} />
+                Barcode / OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('manual-token'); setResult(null); setOtpError(null); setOtpSuccess(null); }}
+                className={`flex-1 py-3.5 text-center text-[11px] sm:text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                  activeTab === 'manual-token'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-400'
+                    : 'text-emerald-400/50 hover:text-emerald-200'
+                }`}
+              >
+                <LockKeyhole size={14} />
+                Masuk Manual
               </button>
               <button
                 type="button"
                 onClick={() => { setActiveTab('recovery'); setRecoveryResult(null); }}
-                className={`flex-1 py-3.5 text-center text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                className={`flex-1 py-3.5 text-center text-[11px] sm:text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${
                   activeTab === 'recovery'
                     ? 'bg-yellow-500/10 text-yellow-300 border-b-2 border-yellow-400'
                     : 'text-emerald-400/50 hover:text-emerald-200'
                 }`}
               >
-                <RefreshCcw size={15} />
-                Ganti Perangkat
+                <RefreshCcw size={14} />
+                Ganti HP
               </button>
             </div>
 
             <div className="p-6">
-              {/* ---- ACCESS TAB ---- */}
-              {activeTab === 'access' && (
+              {/* ---- BARCODE + OTP TAB ---- */}
+              {activeTab === 'barcode-otp' && (
+                <>
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-black shrink-0">
+                      <QrCode size={20} />
+                    </div>
+                    <div>
+                      <h2 className="font-space text-lg font-bold text-emerald-50">Masuk via Barcode Kartu</h2>
+                      <p className="text-xs text-emerald-200/55">Unggah barcode kartu digital Anda untuk menerima kode OTP.</p>
+                    </div>
+                  </div>
+
+                  {otpError && (
+                    <div className="mb-4 rounded-lg border border-red-500/35 bg-red-950/35 p-4 text-xs leading-5 text-red-100 flex items-start gap-2">
+                      <ShieldAlert size={15} className="shrink-0 mt-0.5" />
+                      <span>{otpError}</span>
+                    </div>
+                  )}
+
+                  {otpSuccess && (
+                    <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs leading-5 text-emerald-100 flex items-start gap-2">
+                      <CheckCircle2 size={15} className="shrink-0 mt-0.5 text-emerald-400" />
+                      <span>{otpSuccess}</span>
+                    </div>
+                  )}
+
+                  {/* Dev simulated OTP banner */}
+                  {devOtp && !result?.identity && (
+                    <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-950/25 p-3 text-xs text-yellow-200">
+                      <span className="font-bold">🖥️ [Dev Mode] Kode OTP Terkirim:</span>{' '}
+                      <code className="font-mono bg-black/40 px-2 py-0.5 rounded border border-yellow-900/30 text-white font-bold select-all">{devOtp}</code>
+                    </div>
+                  )}
+
+                  {!otpSent ? (
+                    <div className="space-y-4">
+                      {/* File Upload zone */}
+                      <div className="p-5 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-950/20 text-center relative transition duration-300 hover:border-emerald-500/40 hover:bg-emerald-950/35">
+                        <label className="cursor-pointer block">
+                          <div className="flex flex-col items-center justify-center space-y-2.5">
+                            {qrScanning || otpLoading ? (
+                              <Loader2 className="text-emerald-400 animate-spin" size={32} />
+                            ) : (
+                              <UploadCloud className="text-emerald-400" size={32} />
+                            )}
+                            <span className="text-xs font-bold text-emerald-100">
+                              {qrScanning ? 'Membaca Kartu...' : otpLoading ? 'Meminta OTP...' : 'Unggah Barcode Kartu Anggota'}
+                            </span>
+                            <span className="text-[10px] text-emerald-400/50 leading-relaxed max-w-[280px] mx-auto">
+                              Pilih screenshot / foto Barcode publik dari Kartu Anggota Digital Anda.
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleQrUpload}
+                            disabled={qrScanning || otpLoading}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {qrMessage && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-300 text-center animate-pulse">
+                          {qrMessage}
+                        </div>
+                      )}
+
+                      {qrError && (
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-950/20 p-3 text-xs text-yellow-200 text-center">
+                          {qrError}
+                        </div>
+                      )}
+
+                      <div className="relative flex py-2 items-center">
+                        <div className="flex-grow border-t border-emerald-950/60"></div>
+                        <span className="flex-shrink mx-4 text-[10px] font-mono text-emerald-400/40 uppercase">Atau Masukkan Manual</span>
+                        <div className="flex-grow border-t border-emerald-950/60"></div>
+                      </div>
+
+                      {/* Manual public code entry to trigger OTP */}
+                      <form onSubmit={(e) => { e.preventDefault(); void requestOtp(); }} className="space-y-4">
+                        <label className="block text-left">
+                          <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Farm ID / Public Code</span>
+                          <input
+                            value={publicCode}
+                            onChange={(event) => setPublicCode(event.target.value.toUpperCase())}
+                            required
+                            className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                            placeholder="PODGE-FARM-2026-XXXXXXXX"
+                          />
+                        </label>
+
+                        <button
+                          type="submit"
+                          disabled={otpLoading || !publicCode}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-emerald-400 disabled:opacity-50"
+                        >
+                          {otpLoading ? 'Mengirim OTP...' : 'Kirim OTP Akses'}
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <form onSubmit={verifyOtp} className="space-y-5">
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/35 p-4 text-xs text-emerald-200 text-left">
+                        <p className="font-semibold text-emerald-400">Kode Akses Terkirim</p>
+                        <p className="mt-1 leading-relaxed text-emerald-200/70">
+                          Kode OTP rahasia telah dikirim ke nomor WhatsApp / Telegram Anda di nomor: <strong className="text-white">{maskedPhone}</strong>
+                        </p>
+                      </div>
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Masukkan Kode OTP</span>
+                        <input
+                          value={otpCode}
+                          onChange={(event) => setOtpCode(event.target.value)}
+                          required
+                          maxLength={6}
+                          className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-center text-lg tracking-[0.5em] text-white outline-none transition focus:border-emerald-500"
+                          placeholder="------"
+                        />
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={loading || otpCode.length < 6}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-extrabold text-black transition hover:bg-emerald-400 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                      >
+                        {loading ? 'Memverifikasi...' : 'Masuk ke Dashboard'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void requestOtp()}
+                        className="w-full text-center text-xs font-semibold text-emerald-400/70 hover:text-emerald-300 transition"
+                      >
+                        Tidak terima kode? Kirim ulang OTP
+                      </button>
+                    </form>
+                  )}
+
+                  {result?.identity && (
+                    <div className="mt-5 rounded-lg border border-emerald-900/60 bg-black/25 p-4 text-left">
+                      <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Identitas Terbuka</p>
+                      <p className="mt-2 font-space text-xl font-extrabold text-white">{result.identity.display_name}</p>
+                      <p className="mt-1 text-sm text-emerald-200/65">{identityTypeLabel(result.identity.identity_type)}</p>
+                      {result.identity.linked_farm_id && (
+                        <p className="mt-1 text-xs font-mono text-emerald-400/70">Farm ID: {result.identity.linked_farm_id}</p>
+                      )}
+                      <Link
+                        href={destinationHref}
+                        className="mt-4 inline-flex w-full justify-center rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2.5 text-sm font-bold transition"
+                      >
+                        Lanjutkan ke Dashboard
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ---- MANUAL TOKEN TAB ---- */}
+              {activeTab === 'manual-token' && (
                 <>
                   <div className="mb-5 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-black shrink-0">
                       <LockKeyhole size={20} />
                     </div>
                     <div>
-                      <h2 className="font-space text-xl font-bold text-emerald-50">Akses PODGE-ID</h2>
-                      <p className="text-xs text-emerald-200/55">Masukkan Farm ID atau Public Code beserta token.</p>
+                      <h2 className="font-space text-xl font-bold text-emerald-50">Masuk Manual (Token)</h2>
+                      <p className="text-xs text-emerald-200/55">Masukkan Farm ID beserta Token Akses Anda secara manual.</p>
                     </div>
                   </div>
-
-                  {/* File Upload QR Code Scanner */}
-                  <div className="mb-5 p-4 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-950/20 text-center relative transition duration-300 hover:border-emerald-500/40 hover:bg-emerald-950/35">
-                    <label className="cursor-pointer block">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        {qrScanning ? (
-                          <Loader2 className="text-emerald-400 animate-spin" size={28} />
-                        ) : (
-                          <UploadCloud className="text-emerald-400" size={28} />
-                        )}
-                        <span className="text-xs font-bold text-emerald-100">
-                          {qrScanning ? 'Membaca Barcode...' : 'Unggah Barcode / QR Kartu Digital'}
-                        </span>
-                        <span className="text-[10px] text-emerald-400/50">
-                          Pilih atau seret screenshot/gambar QR Pribadi (Barcode 1) untuk masuk otomatis.
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleQrUpload}
-                        disabled={qrScanning}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  {qrMessage && (
-                    <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
-                      <span>{qrMessage}</span>
-                    </div>
-                  )}
-
-                  {qrError && (
-                    <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-950/20 p-3 text-xs text-yellow-200 flex items-center gap-2">
-                      <AlertCircle size={14} className="shrink-0 text-yellow-400" />
-                      <span>{qrError}</span>
-                    </div>
-                  )}
 
                   {result?.message && (
-                    <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                    <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100 text-left">
                       <div className="flex items-center gap-2 font-bold mb-1">
                         <CheckCircle2 size={16} />
                         Berhasil
@@ -380,22 +583,17 @@ export default function IdentityAccessClient() {
                   )}
 
                   {result?.error && (
-                    <div className="mb-4 rounded-lg border border-yellow-500/35 bg-yellow-950/35 p-4 text-sm leading-6 text-yellow-100">
+                    <div className="mb-4 rounded-lg border border-yellow-500/35 bg-yellow-950/35 p-4 text-sm leading-6 text-yellow-100 text-left">
                       <div className="mb-1 flex items-center gap-2 font-bold">
                         <ShieldAlert size={16} />
                         Akses belum bisa dibuka
                       </div>
                       <p>{result.error}</p>
-                      {result.error.includes('perangkat pertama') && (
-                        <p className="mt-2 text-xs text-yellow-300/70">
-                          💡 Gunakan tab <strong>&quot;Ganti Perangkat&quot;</strong> di atas dengan Recovery Code untuk pindah akses ke browser/HP ini.
-                        </p>
-                      )}
                     </div>
                   )}
 
                   <form onSubmit={submitAccess} className="space-y-4">
-                    <label className="block">
+                    <label className="block text-left">
                       <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Farm ID atau Public Code</span>
                       <input
                         value={publicCode}
@@ -404,17 +602,16 @@ export default function IdentityAccessClient() {
                         className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
                         placeholder="PODGE-FARM-2026-XXXXXXXX"
                       />
-                      <p className="mt-1 text-[10px] text-emerald-400/50">Masukkan Farm ID (e.g. PODGE-FARM-2026-54D5D309) atau Public Code (PODGE-ID-FARM-...)</p>
                     </label>
 
-                    <label className="block">
+                    <label className="block text-left">
                       <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Private Token</span>
                       <input
                         value={token}
                         onChange={(event) => setToken(event.target.value)}
                         required
                         className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
-                        placeholder="Token rahasia dari QR pribadi"
+                        placeholder="Token rahasia"
                       />
                     </label>
 
@@ -424,13 +621,13 @@ export default function IdentityAccessClient() {
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-extrabold text-black transition hover:bg-emerald-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_0_20px_rgba(16,185,129,0.25)]"
                     >
                       <KeyRound size={17} />
-                      {loading ? 'Membuka akses...' : 'Masuk dengan PODGE-ID'}
+                      {loading ? 'Membuka akses...' : 'Masuk dengan Token'}
                     </button>
                   </form>
 
                   {result?.identity && (
-                    <div className="mt-5 rounded-lg border border-emerald-900/60 bg-black/25 p-4">
-                      <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Identity Terbuka</p>
+                    <div className="mt-5 rounded-lg border border-emerald-900/60 bg-black/25 p-4 text-left">
+                      <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Identitas Terbuka</p>
                       <p className="mt-2 font-space text-xl font-extrabold text-white">{result.identity.display_name}</p>
                       <p className="mt-1 text-sm text-emerald-200/65">{identityTypeLabel(result.identity.identity_type)}</p>
                       {result.identity.linked_farm_id && (

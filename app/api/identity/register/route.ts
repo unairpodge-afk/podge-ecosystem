@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const identityType = body.identityType;
     const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
+    const phoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : '';
 
     if (!isAllowedType(identityType)) {
       return NextResponse.json(
@@ -36,6 +37,10 @@ export async function POST(request: NextRequest) {
 
     if (!displayName) {
       return NextResponse.json({ error: 'Nama Lengkap wajib diisi.' }, { status: 400 });
+    }
+
+    if (!phoneNumber) {
+      return NextResponse.json({ error: 'Nomor HP / WhatsApp wajib diisi.' }, { status: 400 });
     }
 
     const privateToken = createPodgePrivateToken();
@@ -55,9 +60,10 @@ export async function POST(request: NextRequest) {
             display_name,
             identity_type,
             recovery_code_hash,
+            phone_number,
             metadata
           )
-          VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+          VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
           RETURNING *`,
           [
             publicCode,
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
             displayName,
             identityType,
             recoveryCodeHash,
+            phoneNumber,
             JSON.stringify({
               registration_source: 'self_registration',
               registered_at: new Date().toISOString(),

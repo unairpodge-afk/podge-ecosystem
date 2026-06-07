@@ -23,6 +23,7 @@ export type PodgeIdentityRecord = {
   role_id: string | null;
   linked_farm_id: string | null;
   linked_admin_id: string | null;
+  phone_number: string | null;
   is_claimed: boolean;
   claimed_at: string | Date | null;
   claimed_device_hash: string | null;
@@ -65,6 +66,7 @@ export async function ensurePodgeIdentitiesTable() {
       role_id TEXT,
       linked_farm_id TEXT,
       linked_admin_id UUID,
+      phone_number TEXT,
       is_claimed BOOLEAN NOT NULL DEFAULT false,
       claimed_at TIMESTAMPTZ,
       claimed_device_hash TEXT,
@@ -76,6 +78,24 @@ export async function ensurePodgeIdentitiesTable() {
       metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Migrasi aman untuk database yang sudah ada
+  await query(`
+    ALTER TABLE podge_identities
+      ADD COLUMN IF NOT EXISTS phone_number TEXT
+  `);
+
+  // Buat tabel OTP
+  await query(`
+    CREATE TABLE IF NOT EXISTS podge_otps (
+      otp_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      identity_id UUID REFERENCES podge_identities(identity_id) ON DELETE CASCADE,
+      otp_code TEXT NOT NULL,
+      expired_at TIMESTAMPTZ NOT NULL,
+      is_used BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 

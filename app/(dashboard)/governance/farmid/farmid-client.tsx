@@ -1252,7 +1252,7 @@ export default function FarmIdClient({
           </div>
           <div>
             <h2 className="font-space text-xl font-extrabold text-white">Panduan Barcode & Keterlacakan Anggota</h2>
-            <p className="text-xs text-emerald-400/70 mt-0.5">Langkah operasional penggunaan Kartu Digital Petani PODGE</p>
+            <p className="text-xs text-emerald-400/70 mt-0.5">Operasional satu Barcode multifungsi untuk keamanan dan kepraktisan Petani</p>
           </div>
         </div>
 
@@ -1262,23 +1262,23 @@ export default function FarmIdClient({
             <div>
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">01</span>
-                <h3 className="font-space text-sm font-bold text-emerald-300">Barcode 1: Simpan Token Akses</h3>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Satu Barcode Anggota</h3>
               </div>
               <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
-                Barcode 1 adalah QR Code Akses Pribadi (Private QR) Anda. Harap <strong>simpan/unduh barcode ini terlebih dahulu</strong>. Barcode ini digunakan untuk masuk (login) kembali ke dashboard Anda dari perangkat manapun dengan aman tanpa password. Jangan dibagikan ke orang lain!
+                Kartu digital Anda memiliki **satu Barcode Publik** yang tertera di sebelah bawah. Barcode ini memiliki fungsi ganda: untuk pelacakan sawit oleh pembeli/pabrik, sekaligus untuk memicu pengiriman kode masuk (OTP) rahasia ke HP Anda.
               </p>
             </div>
-            {privateToken ? (
+            {record?.farm_id || cardFarmId ? (
               <div className="pt-4 flex flex-col items-center border-t border-emerald-950/80 mt-4">
                 <div className="bg-white p-1.5 rounded-lg shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrUrl(`${origin}/identity/access?id=${encodeURIComponent(record?.farm_id || cardFarmId)}&token=${encodeURIComponent(privateToken)}`)} alt="Barcode 1 - Private QR" className="h-28 w-28" />
+                  <img src={qrUrl(publicLink || `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record?.farm_id || cardFarmId)}`)} alt="Barcode Kartu Anggota" className="h-28 w-28" />
                 </div>
-                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider">BARCODE 1 (PRIVATE QR)</span>
+                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider text-center">BARCODE KARTU ANGGOTA</span>
               </div>
             ) : (
-              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-yellow-300/70 italic leading-normal">
-                💡 Gambar Barcode 1 tidak tampil karena token rahasia tidak disimpan di server demi keamanan. Anda dapat melihat Barcode 1 Anda kapan saja di Dashboard Utama melalui menu <strong>&quot;Kelola Token Akses&quot;</strong>.
+              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-400/50 italic text-center">
+                Belum ada data Farm ID.
               </div>
             )}
           </div>
@@ -1288,25 +1288,15 @@ export default function FarmIdClient({
             <div>
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">02</span>
-                <h3 className="font-space text-sm font-bold text-emerald-300">Barcode 2: Untuk Masyarakat & PKS</h3>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Masuk Aman via OTP HP</h3>
               </div>
               <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
-                Barcode 2 adalah QR Code Publik yang dicetak di kartu digital Anda. Bagikan barcode ini kepada masyarakat, koperasi, atau Pabrik Kelapa Sawit (PKS) agar mereka dapat <strong>melacak asal-usul kelapa sawit</strong>, data kebun, dan keabsahan dokumen (KYC) Anda.
+                Saat Anda mengunggah screenshot atau foto Barcode Kartu ini di halaman login, sistem akan mengirimkan **6-digit Kode OTP** ke nomor WhatsApp / Telegram Anda yang terdaftar. Anda tidak perlu menghafal sandi atau token yang rumit!
               </p>
             </div>
-            {record?.farm_id || cardFarmId ? (
-              <div className="pt-4 flex flex-col items-center border-t border-emerald-950/80 mt-4">
-                <div className="bg-white p-1.5 rounded-lg shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrUrl(publicLink || `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record?.farm_id || cardFarmId)}`)} alt="Barcode 2 - Public QR" className="h-28 w-28" />
-                </div>
-                <span className="text-[9px] font-mono text-emerald-400/80 font-bold uppercase mt-1 tracking-wider">BARCODE 2 (PUBLIC QR)</span>
-              </div>
-            ) : (
-              <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-400/50 italic text-center">
-                Belum ada data Farm ID untuk menampilkan Barcode 2.
-              </div>
-            )}
+            <div className="pt-4 border-t border-emerald-950/80 mt-4 text-[10px] text-emerald-300/80 leading-normal">
+              💡 **Keamanan 2-Faktor**: Meskipun orang lain men-scan kartu Anda, mereka tidak akan bisa login karena kode masuk rahasia hanya dikirimkan langsung ke nomor HP pribadi Anda.
+            </div>
           </div>
 
           {/* Step 3 */}
@@ -1314,14 +1304,14 @@ export default function FarmIdClient({
             <div>
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">03</span>
-                <h3 className="font-space text-sm font-bold text-emerald-300">Status Panen & Keterlacakan</h3>
+                <h3 className="font-space text-sm font-bold text-emerald-300">Status Panen Ter-update</h3>
               </div>
               <p className="text-xs leading-relaxed text-emerald-100/60 mt-2">
-                Gunakan fitur <strong>Status Panen</strong> di bawah ini untuk memperbarui status sawit Anda (e.g., &quot;Siap Panen&quot; atau &quot;Terkirim ke Koperasi&quot;). Ketika Anda merubah status ini, data pada Barcode 2 (Public) akan ikut terupdate otomatis secara real-time untuk pembeli dan regulator.
+                Setelah masuk, gunakan formulir di bawah ini untuk memperbarui **Status Panen** (seperti *"Siap Panen"* atau *"Terkirim ke Koperasi"*). Pembeli atau Pabrik Sawit yang memindai kartu Anda akan langsung melihat status panen terbaru secara real-time.
               </p>
             </div>
             <div className="rounded border border-emerald-950 bg-black/40 p-2.5 text-center text-[10px] text-emerald-300 font-mono mt-4 leading-relaxed">
-              <span>Status Verifikasi KYC Lahan saat ini: </span>
+              <span>Status KYC Lahan: </span>
               <span className="font-bold text-white uppercase">{record ? record.verification_status : 'PENDING'}</span>
             </div>
           </div>

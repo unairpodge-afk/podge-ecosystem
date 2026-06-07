@@ -70,6 +70,7 @@ const roleOptions: Array<{
 export default function RegisterPage() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<Role>('farmer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -89,6 +90,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           identityType: role,
           displayName: displayName.trim(),
+          phoneNumber: phoneNumber.trim(),
         }),
       });
       const data = (await response.json()) as RegisterResult;
@@ -207,6 +209,20 @@ export default function RegisterPage() {
                       required
                       className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
                       placeholder="Contoh: Kelompok Tani Berkah"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                      Nomor HP / WhatsApp
+                    </span>
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(event) => setPhoneNumber(event.target.value)}
+                      required
+                      className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
+                      placeholder="Contoh: 081234567890"
                     />
                   </label>
 
