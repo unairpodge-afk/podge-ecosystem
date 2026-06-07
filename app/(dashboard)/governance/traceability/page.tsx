@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import SupplyChainMap from './supply-chain-map';
 import Link from 'next/link';
 import { getFeaturedTraceabilityLog, type TraceabilityLog } from '@/lib/batch-passport';
+import { appendLedgerEvent } from '@/lib/ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,22 @@ export default async function TraceabilityPage() {
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [batchId, farmerName, tbsWeightKg, pksDestination, hash, status]
       );
+
+      // Append this event to the cryptographic ledger
+      await appendLedgerEvent({
+        entityType: 'traceability',
+        entityId: batchId,
+        action: 'verify_traceability',
+        actor: {
+          name: farmerName,
+        },
+        payload: {
+          tbs_weight_kg: tbsWeightKg,
+          pks_destination: pksDestination,
+          status: status,
+          blockchain_hash: hash,
+        },
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error('Gagal menyimpan log ketelusuran ke database:', message, e);

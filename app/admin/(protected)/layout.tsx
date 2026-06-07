@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Eye, Fingerprint, KeyRound, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';
+import { Eye, Fingerprint, KeyRound, LayoutDashboard, LogOut, ShieldCheck, Database } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin-auth';
 import { logoutAdmin } from '../login/actions';
 
@@ -41,6 +41,13 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
             >
               <KeyRound size={16} />
               PODGE-ID
+            </Link>
+            <Link
+              href="/admin/ledger"
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-800/60 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-950/70"
+            >
+              <Database size={16} />
+              Event Ledger
             </Link>
             <Link
               href="/governance/farmid"
