@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import TokenManager from './token-manager';
 import DownstreamViewer from './downstream-viewer';
+import InvestorOverview from './investor-overview';
 import HumaneAICompanion from '@/app/components/humane-ai-companion';
 import {
   Fingerprint,
@@ -639,9 +640,9 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Downstream supply chain visualization for Investor */}
+          {/* Investor specialized portfolio overview */}
           <div className="border-t border-amber-950/40 pt-6">
-            <DownstreamViewer identity={identity} />
+            <InvestorOverview />
           </div>
         </div>
       )}
