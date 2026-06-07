@@ -5,10 +5,26 @@ import {
   Brain, Cpu, Terminal, ShieldAlert, CheckCircle2, XCircle, 
   Eye, Activity, FileText, RefreshCw, Play, ArrowRight, 
   Server, Settings, AlertCircle, MapPin, Sparkles, Coins,
-  Truck, HelpCircle, ShieldCheck, DollarSign
+  Truck, HelpCircle, ShieldCheck, DollarSign,
+  Users, BarChart2, Globe, TrendingUp
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 
 type AgentStatus = 'idle' | 'active' | 'success' | 'failed';
+
+const ABM_DATA = [
+  { region: 'Kalimantan Tengah', farmers: 324500, compliant: 289000, yieldAvg: 2.4, warning: 15 },
+  { region: 'Sumatera Utara', farmers: 210800, compliant: 198000, yieldAvg: 3.1, warning: 5 },
+  { region: 'Riau', farmers: 285000, compliant: 250000, yieldAvg: 2.8, warning: 12 },
+  { region: 'Kalimantan Barat', farmers: 130000, compliant: 110000, yieldAvg: 2.1, warning: 22 },
+  { region: 'Jambi', farmers: 49700, compliant: 45000, yieldAvg: 2.5, warning: 8 },
+];
+
+const TIME_SERIES_DATA = Array.from({length: 12}).map((_, i) => ({
+  month: `Bln ${i+1}`,
+  harvestVolume: Math.floor(Math.random() * 500000) + 1500000,
+  premiumPaid: Math.floor(Math.random() * 200) + 800
+}));
 
 const COMPANIES = [
   { name: 'PT Borneo Palm Energy', region: 'Kalimantan Tengah', coords: '-2.215, 113.921', age: 14, fertilizer: 110, pricePremium: 400 },
@@ -17,6 +33,7 @@ const COMPANIES = [
 ];
 
 export default function AIAgentsPage() {
+  const [activeTab, setActiveTab] = useState<'sentinel' | 'abm'>('sentinel');
   const [selectedComp, setSelectedComp] = useState(COMPANIES[0]);
   const [simulateDeforestation, setSimulateDeforestation] = useState(false);
   const [simulatePoorQuality, setSimulatePoorQuality] = useState(false);
@@ -221,21 +238,48 @@ export default function AIAgentsPage() {
     <div className="space-y-8 min-h-screen pb-16">
       
       {/* Page Header */}
-      <div>
-        <div className="inline-flex items-center rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
-          Nemesis Sentinel Oracle v2.1
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+            Nemesis Sentinel Oracle v2.1
+          </div>
+          <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">AI Intelligence Control Room</h1>
+          <p className="text-sm text-emerald-200/60 mt-1 max-w-4xl">
+            Sistem koordinasi multi-agen sawit otonom: memastikan kelayakan mutu panen petani, kepatuhan legalitas PKS secara spasial, 
+            peningkatan kesejahteraan petani (Incentive Premium), dan kelancaran ekspor CPO melimpah ke pasar internasional.
+          </p>
         </div>
-        <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">AI Intelligence Control Room</h1>
-        <p className="text-sm text-emerald-200/60 mt-1 max-w-4xl">
-          Sistem koordinasi multi-agen sawit otonom: memastikan kelayakan mutu panen petani, kepatuhan legalitas PKS secara spasial, 
-          peningkatan kesejahteraan petani (Incentive Premium), dan kelancaran ekspor CPO melimpah ke pasar internasional.
-        </p>
+
+        {/* Tab Switcher */}
+        <div className="flex p-1 bg-emerald-950/40 border border-emerald-900/50 rounded-lg shrink-0">
+          <button
+            onClick={() => setActiveTab('sentinel')}
+            className={`px-4 py-2 text-xs font-bold font-mono uppercase tracking-wider rounded-md transition-colors ${
+              activeTab === 'sentinel' 
+                ? 'bg-emerald-500 text-black shadow-md' 
+                : 'text-emerald-400 hover:bg-emerald-900/50'
+            }`}
+          >
+            Sentinel Audit
+          </button>
+          <button
+            onClick={() => setActiveTab('abm')}
+            className={`px-4 py-2 text-xs font-bold font-mono uppercase tracking-wider rounded-md transition-colors flex items-center gap-1 ${
+              activeTab === 'abm' 
+                ? 'bg-emerald-500 text-black shadow-md' 
+                : 'text-emerald-400 hover:bg-emerald-900/50'
+            }`}
+          >
+            <Users size={14} /> ABM Big Data
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* LEFT COLUMN: Controls & Network - 5 Columns */}
-        <div className="lg:col-span-5 space-y-6">
+      {activeTab === 'sentinel' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* LEFT COLUMN: Controls & Network - 5 Columns */}
+          <div className="lg:col-span-5 space-y-6">
           
           {/* Controls Panel */}
           <div className="glass-panel p-5 rounded-2xl border border-emerald-950/70 space-y-4">
@@ -557,6 +601,105 @@ export default function AIAgentsPage() {
         </div>
 
       </div>
+      ) : (
+        /* ABM BIG DATA TAB */
+        <div className="space-y-6 animate-in fade-in duration-500">
+          
+          {/* ABM Metrics Banner */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/80 to-black relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-emerald-500/20 blur-xl rounded-full"></div>
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider mb-1">Total Active Nodes</p>
+              <p className="text-3xl font-extrabold text-white font-space">1,000,000</p>
+              <p className="text-[10px] text-emerald-200/50 mt-1 flex items-center gap-1">
+                <Users size={10} /> Petani Mandiri Terindeks
+              </p>
+            </div>
+            <div className="glass-panel p-5 rounded-2xl border border-emerald-900/50 bg-black/60">
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider mb-1">EUDR Compliant</p>
+              <p className="text-3xl font-extrabold text-white font-space">89.2%</p>
+              <p className="text-[10px] text-emerald-200/50 mt-1 flex items-center gap-1">
+                <CheckCircle2 size={10} className="text-emerald-400" /> Lolos Audit Geospasial
+              </p>
+            </div>
+            <div className="glass-panel p-5 rounded-2xl border border-emerald-900/50 bg-black/60">
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider mb-1">Est. CPO Output</p>
+              <p className="text-3xl font-extrabold text-white font-space">4.2M <span className="text-lg">Ton</span></p>
+              <p className="text-[10px] text-emerald-200/50 mt-1 flex items-center gap-1">
+                <Globe size={10} /> Proyeksi Kuartal Ini
+              </p>
+            </div>
+            <div className="glass-panel p-5 rounded-2xl border border-purple-900/50 bg-purple-950/10">
+              <p className="text-[10px] text-purple-400 font-mono uppercase tracking-wider mb-1">Premium Distributed</p>
+              <p className="text-3xl font-extrabold text-purple-400 font-space">Rp 12.8T</p>
+              <p className="text-[10px] text-purple-200/50 mt-1 flex items-center gap-1">
+                <DollarSign size={10} /> Kesejahteraan Petani
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Chart 1: Node Distribution */}
+            <div className="glass-panel p-6 rounded-2xl border border-emerald-900/50 bg-black/40">
+              <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider mb-6 flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-500" /> 
+                Distribusi Agen ABM (Per Wilayah)
+              </h3>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ABM_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" vertical={false} />
+                    <XAxis dataKey="region" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val / 1000}k`} />
+                    <Tooltip 
+                      cursor={{ fill: '#064e3b', opacity: 0.4 }}
+                      contentStyle={{ backgroundColor: '#022c22', borderColor: '#065f46', borderRadius: '8px', fontSize: '12px', color: '#fff' }}
+                    />
+                    <Bar dataKey="farmers" name="Total Petani" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="compliant" name="EUDR Lolos" fill="#34d399" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Chart 2: Time Series Yield */}
+            <div className="glass-panel p-6 rounded-2xl border border-emerald-900/50 bg-black/40">
+              <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider mb-6 flex items-center gap-2">
+                <TrendingUp size={16} className="text-emerald-500" /> 
+                Proyeksi Volume Panen (Nasional)
+              </h3>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={TIME_SERIES_DATA} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorHarvest" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" vertical={false} />
+                    <XAxis dataKey="month" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#022c22', borderColor: '#065f46', borderRadius: '8px', fontSize: '12px', color: '#fff' }}
+                    />
+                    <Area type="monotone" dataKey="harvestVolume" name="Volume TBS (Kg)" stroke="#10b981" fillOpacity={1} fill="url(#colorHarvest)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+          
+          {/* Information Notice */}
+          <div className="bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-4 flex gap-3 text-xs text-emerald-200/70">
+            <ShieldAlert size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+            <p>
+              <strong className="text-emerald-400">Agent-Based Modeling (ABM) Intel:</strong> Panel ini mensimulasikan komputasi data spasial secara agregat dari 1.000.000 titik (nodes) representasi petani sawit mandiri di Indonesia. Sistem mendeteksi tren panen, kepatuhan EUDR, dan distribusi Harga Premium Kesejahteraan untuk menjaga stabilitas ekspor CPO.
+            </p>
+          </div>
+
+        </div>
+      )}
 
     </div>
   );

@@ -121,7 +121,7 @@ export default async function AdminDashboardPage() {
 
         {/* NEMESIS AI BANNER (ADMIN) */}
         <div className="mt-8">
-          <a href="/governance/ai-agents" className="group glass-panel rounded-xl p-6 border border-emerald-500/50 hover:border-emerald-400 transition flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden bg-gradient-to-r from-emerald-950/60 to-black/80 shadow-[0_0_20px_rgba(16,185,129,0.15)] block cursor-pointer">
+          <a href="/admin/ai-agents" className="group glass-panel rounded-xl p-6 border border-emerald-500/50 hover:border-emerald-400 transition flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden bg-gradient-to-r from-emerald-950/60 to-black/80 shadow-[0_0_20px_rgba(16,185,129,0.15)] block cursor-pointer">
             <div className="absolute top-0 right-0 w-64 h-full bg-emerald-500/10 skew-x-12 blur-2xl group-hover:bg-emerald-400/20 transition-colors"></div>
             
             <div className="flex items-center gap-5 z-10 w-full">

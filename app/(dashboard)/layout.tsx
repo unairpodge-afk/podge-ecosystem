@@ -96,8 +96,7 @@ export default function DashboardLayout({
       items: [
         { name: "FarmID Claim", href: "/governance/farmid", icon: Fingerprint },
         { name: "Blockchain Traceability", href: "/governance/traceability", icon: Layers },
-        { name: "Compliance Monitoring", href: "/governance/compliance", icon: ShieldCheck },
-        { name: "AI Agent Operations", href: "/governance/ai-agents", icon: Brain }
+        { name: "Compliance Monitoring", href: "/governance/compliance", icon: ShieldCheck }
       ]
     },
     {
