@@ -15,6 +15,8 @@ import {
   ChevronUp,
   KeyRound,
   User,
+  RefreshCcw,
+  Loader2,
 } from 'lucide-react';
 
 type MemberRow = {
@@ -32,6 +34,15 @@ type MemberRow = {
   token_rotated_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ResetResult = {
+  success?: boolean;
+  newToken?: string;
+  publicCode?: string;
+  displayName?: string;
+  message?: string;
+  error?: string;
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -64,12 +75,21 @@ function qrUrl(value: string) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(value)}`;
 }
 
+function accessLink(origin: string, publicCode: string, token: string) {
+  return `${origin}/identity/access?id=${encodeURIComponent(publicCode)}&token=${encodeURIComponent(token)}`;
+}
+
 export default function MembersClient({ members }: { members: MemberRow[] }) {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleHashes, setVisibleHashes] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // reset token state: keyed by identity_id
+  const [resetLoading, setResetLoading] = useState<string | null>(null);
+  const [resetResults, setResetResults] = useState<Record<string, ResetResult>>({});
+  const [confirmReset, setConfirmReset] = useState<string | null>(null);
 
   const filtered = members.filter((m) => {
     const matchSearch =
@@ -93,11 +113,50 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
   async function copyText(text: string, id: string) {
     await navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setTimeout(() => setCopiedId(null), 2500);
+  }
+
+  async function handleResetToken(identityId: string) {
+    if (confirmReset !== identityId) {
+      setConfirmReset(identityId);
+      return;
+    }
+    setConfirmReset(null);
+    setResetLoading(identityId);
+    setResetResults((prev) => ({ ...prev, [identityId]: {} }));
+
+    try {
+      const resp = await fetch('/api/admin/reset-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityId }),
+      });
+      const data = await resp.json() as ResetResult;
+      setResetResults((prev) => ({ ...prev, [identityId]: data }));
+    } catch (err) {
+      setResetResults((prev) => ({
+        ...prev,
+        [identityId]: { error: 'Gagal menghubungi server.' },
+      }));
+    }
+    setResetLoading(null);
   }
 
   return (
     <div className="space-y-4">
+      {/* Warning box */}
+      <div className="rounded-xl border border-yellow-500/25 bg-yellow-950/20 p-4 flex items-start gap-3 text-xs text-yellow-200/80">
+        <ShieldAlert size={16} className="shrink-0 text-yellow-400 mt-0.5" />
+        <div>
+          <p className="font-bold text-yellow-300 mb-0.5">Penting — Token Hash vs Token Asli</p>
+          <p>
+            Kolom <strong>Private Token Hash</strong> adalah SHA-256 hash — <em>bukan</em> token yang bisa dipakai login.
+            Token asli hanya ditampilkan satu kali saat identitas dibuat dan tidak pernah disimpan di server.
+            Jika anggota tidak memiliki token aslinya, gunakan tombol <strong>&quot;Reset Token&quot;</strong> di bawah untuk menerbitkan token baru.
+          </p>
+        </div>
+      </div>
+
       {/* Search & Filter */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px]">
@@ -131,6 +190,10 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
           const isExpanded = expandedId === m.identity_id;
           const showHash = visibleHashes.has(m.identity_id);
           const publicLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app'}/identity/view?id=${encodeURIComponent(m.public_code)}`;
+          const resetResult = resetResults[m.identity_id];
+          const isResetting = resetLoading === m.identity_id;
+          const awaitingConfirm = confirmReset === m.identity_id;
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app';
 
           return (
             <div
@@ -175,6 +238,62 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
               {/* Expanded detail */}
               {isExpanded && (
                 <div className="border-t border-emerald-900/50 p-4 space-y-4">
+
+                  {/* ===== RESET TOKEN RESULT ===== */}
+                  {resetResult?.error && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-200 flex items-start gap-2">
+                      <ShieldAlert size={13} className="shrink-0 text-red-400 mt-0.5" />
+                      {resetResult.error}
+                    </div>
+                  )}
+
+                  {resetResult?.success && resetResult.newToken && (
+                    <div className="rounded-xl border border-yellow-400/30 bg-yellow-950/20 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-yellow-300 text-xs font-bold font-mono uppercase tracking-wider">
+                        <KeyRound size={13} />
+                        Token Baru — Berikan Kepada Anggota (Hanya Tampil Sekali)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-[11px] font-mono text-yellow-100 bg-black/50 border border-yellow-900/40 rounded-lg p-2.5 break-all">
+                          {resetResult.newToken}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyText(resetResult.newToken!, `new-tk-${m.identity_id}`)}
+                          className="p-2 rounded-lg border border-yellow-900/40 bg-black/30 text-yellow-400 hover:text-yellow-200 transition shrink-0"
+                        >
+                          {copiedId === `new-tk-${m.identity_id}` ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      {/* Access QR with new token */}
+                      <div className="flex gap-3 items-start pt-1">
+                        <div className="bg-white p-1.5 rounded-lg shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={qrUrl(accessLink(origin, m.public_code, resetResult.newToken))}
+                            alt="QR Token Baru"
+                            className="h-24 w-24"
+                          />
+                        </div>
+                        <div className="text-[10px] text-yellow-200/70 space-y-1.5">
+                          <p className="font-bold text-yellow-300 text-xs">QR Login Baru</p>
+                          <p>Scan QR ini dari browser anggota untuk langsung login dengan token baru.</p>
+                          <button
+                            type="button"
+                            onClick={() => copyText(accessLink(origin, m.public_code, resetResult.newToken!), `new-ql-${m.identity_id}`)}
+                            className="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-200 font-semibold transition"
+                          >
+                            {copiedId === `new-ql-${m.identity_id}` ? <Check size={11} /> : <Copy size={11} />}
+                            Salin Link QR
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-yellow-400/60">
+                        Token lama sudah tidak berlaku. Token baru ini tidak tersimpan di server — catat sekarang.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid sm:grid-cols-2 gap-4">
                     {/* Left: identity data */}
                     <div className="space-y-2 text-xs">
@@ -183,6 +302,8 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                       {m.linked_farm_id && (
                         <Detail label="Farm ID" value={m.linked_farm_id} onCopy={() => copyText(m.linked_farm_id!, `fi-${m.identity_id}`)} isCopied={copiedId === `fi-${m.identity_id}`} />
                       )}
+
+                      {/* Token hash */}
                       <div className="rounded-lg border border-emerald-900/50 bg-black/25 p-2.5">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400/60 font-semibold flex items-center gap-1">
@@ -194,7 +315,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                               type="button"
                               onClick={() => toggleHash(m.identity_id)}
                               className="p-1 rounded text-emerald-400/60 hover:text-emerald-300 transition"
-                              title={showHash ? 'Sembunyikan hash' : 'Tampilkan hash'}
+                              title={showHash ? 'Sembunyikan' : 'Tampilkan'}
                             >
                               {showHash ? <EyeOff size={12} /> : <Eye size={12} />}
                             </button>
@@ -202,7 +323,6 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                               type="button"
                               onClick={() => copyText(m.private_token_hash, `th-${m.identity_id}`)}
                               className="p-1 rounded text-emerald-400/60 hover:text-emerald-300 transition"
-                              title="Salin hash"
                             >
                               {copiedId === `th-${m.identity_id}` ? <Check size={12} /> : <Copy size={12} />}
                             </button>
@@ -211,19 +331,58 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                         <code className={`block text-[10px] font-mono text-emerald-200 break-all leading-relaxed transition-all ${!showHash ? 'blur-sm select-none' : ''}`}>
                           {m.private_token_hash}
                         </code>
-                        <p className="text-[9px] text-emerald-400/40 mt-1.5">
-                          ⚠ Ini adalah hash, bukan token asli. Token asli tidak dapat dipulihkan dari sini.
+                        <p className="text-[9px] text-red-400/70 mt-1.5 font-semibold">
+                          ⛔ Jangan berikan nilai ini ke anggota — ini hash, bukan token asli.
                         </p>
                       </div>
+
                       {m.recovery_code_hash && (
                         <div className="rounded-lg border border-yellow-900/40 bg-yellow-950/15 p-2.5">
                           <span className="text-[9px] font-mono uppercase tracking-wider text-yellow-400/70 font-semibold block mb-1">Recovery Code Hash</span>
                           <code className="text-[10px] font-mono text-yellow-200/70 break-all leading-relaxed blur-sm select-none">
                             {m.recovery_code_hash}
                           </code>
-                          <p className="text-[9px] text-yellow-400/40 mt-1">Hash tersimpan — kode asli tidak dapat dipulihkan admin.</p>
+                          <p className="text-[9px] text-yellow-400/40 mt-1">Hash — kode asli tidak dapat dipulihkan admin.</p>
                         </div>
                       )}
+
+                      {/* Reset Token Button */}
+                      <div className="pt-1">
+                        {awaitingConfirm ? (
+                          <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 space-y-2">
+                            <p className="text-[10px] text-red-300 font-semibold">
+                              ⚠ Konfirmasi: Token lama <strong>{m.display_name}</strong> akan langsung tidak berlaku. Lanjutkan?
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleResetToken(m.identity_id)}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 text-[10px] font-bold transition"
+                              >
+                                <RefreshCcw size={11} />
+                                Ya, Reset Token
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmReset(null)}
+                                className="flex-1 rounded-lg border border-emerald-900/50 bg-black/30 text-emerald-400 px-3 py-1.5 text-[10px] transition hover:bg-emerald-950/40"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isResetting}
+                            onClick={() => handleResetToken(m.identity_id)}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-orange-500/40 bg-orange-950/20 px-3 py-2 text-[10px] font-bold text-orange-300 hover:bg-orange-950/40 transition disabled:opacity-50"
+                          >
+                            {isResetting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCcw size={12} />}
+                            {isResetting ? 'Mereset Token...' : 'Reset Token (Generate Baru)'}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Right: metadata & QR */}
@@ -262,7 +421,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                         </div>
                       </div>
 
-                      {/* Admin actions */}
+                      {/* Admin action links */}
                       <div className="flex flex-wrap gap-2">
                         <a
                           href={`/identity/view?id=${encodeURIComponent(m.public_code)}`}
