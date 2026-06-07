@@ -15,8 +15,6 @@ import {
   ChevronUp,
   KeyRound,
   User,
-  RefreshCcw,
-  Loader2,
 } from 'lucide-react';
 
 type MemberRow = {
@@ -93,12 +91,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
   const [visibleHashes, setVisibleHashes] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // reset token state: keyed by identity_id
-  const [resetLoading, setResetLoading] = useState<string | null>(null);
-  const [resetResults, setResetResults] = useState<Record<string, ResetResult>>({});
-  const [confirmReset, setConfirmReset] = useState<string | null>(null);
-  const [claimLoading, setClaimLoading] = useState<string | null>(null);
-  const [claimResults, setClaimResults] = useState<Record<string, ClaimResult>>({});
+
 
   const filtered = memberRows.filter((m) => {
     const matchSearch =
@@ -125,66 +118,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
     setTimeout(() => setCopiedId(null), 2500);
   }
 
-  async function handleResetToken(identityId: string) {
-    if (confirmReset !== identityId) {
-      setConfirmReset(identityId);
-      return;
-    }
-    setConfirmReset(null);
-    setResetLoading(identityId);
-    setResetResults((prev) => ({ ...prev, [identityId]: {} }));
 
-    try {
-      const resp = await fetch('/api/admin/reset-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identityId }),
-      });
-      const data = await resp.json() as ResetResult;
-      setResetResults((prev) => ({ ...prev, [identityId]: data }));
-    } catch {
-      setResetResults((prev) => ({
-        ...prev,
-        [identityId]: { error: 'Gagal menghubungi server.' },
-      }));
-    }
-    setResetLoading(null);
-  }
-
-  async function handleClaimStatus(identityId: string, action: 'claim' | 'unclaim') {
-    setClaimLoading(identityId);
-    setClaimResults((prev) => ({ ...prev, [identityId]: {} }));
-
-    try {
-      const resp = await fetch('/api/admin/members/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identityId, action }),
-      });
-      const data = await resp.json() as ClaimResult & { identity?: Partial<MemberRow> };
-      setClaimResults((prev) => ({ ...prev, [identityId]: data }));
-
-      if (resp.ok && data.identity) {
-        setMemberRows((prev) => prev.map((member) => (
-          member.identity_id === identityId
-            ? {
-                ...member,
-                is_claimed: Boolean(data.identity?.is_claimed),
-                claimed_at: (data.identity?.claimed_at as string | null | undefined) || null,
-                updated_at: (data.identity?.updated_at as string | undefined) || member.updated_at,
-              }
-            : member
-        )));
-      }
-    } catch {
-      setClaimResults((prev) => ({
-        ...prev,
-        [identityId]: { error: 'Gagal menghubungi server.' },
-      }));
-    } finally {
-      setClaimLoading(null);
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -192,11 +126,10 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
       <div className="rounded-xl border border-yellow-500/25 bg-yellow-950/20 p-4 flex items-start gap-3 text-xs text-yellow-200/80">
         <ShieldAlert size={16} className="shrink-0 text-yellow-400 mt-0.5" />
         <div>
-          <p className="font-bold text-yellow-300 mb-0.5">Penting — Token Hash vs Token Asli</p>
+          <p className="font-bold text-yellow-300 mb-0.5">Direktori Anggota - Mode Lihat Saja</p>
           <p>
-            Kolom <strong>Private Token Hash</strong> adalah SHA-256 hash — <em>bukan</em> token yang bisa dipakai login.
-            Token asli hanya ditampilkan satu kali saat identitas dibuat dan tidak pernah disimpan di server.
-            Jika anggota tidak memiliki token aslinya, gunakan tombol <strong>&quot;Reset Token&quot;</strong> di bawah untuk menerbitkan token baru.
+            Halaman ini hanya menampilkan data identitas, hash, dan status klaim anggota platform. 
+            Semua tindakan administrasi (seperti persetujuan KYC, klaim kartu, dan reset token) hanya dapat dikelola melalui menu <a href="/admin/farmid" className="font-bold text-yellow-300 underline hover:text-yellow-100">Oversight FarmID</a>.
           </p>
         </div>
       </div>
@@ -234,11 +167,6 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
           const isExpanded = expandedId === m.identity_id;
           const showHash = visibleHashes.has(m.identity_id);
           const publicLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app'}/identity/view?id=${encodeURIComponent(m.public_code)}`;
-          const resetResult = resetResults[m.identity_id];
-          const claimResult = claimResults[m.identity_id];
-          const isResetting = resetLoading === m.identity_id;
-          const isClaimChanging = claimLoading === m.identity_id;
-          const awaitingConfirm = confirmReset === m.identity_id;
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://podge-ecosystem.vercel.app';
 
           return (
@@ -285,75 +213,6 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
               {isExpanded && (
                 <div className="border-t border-emerald-900/50 p-4 space-y-4">
 
-                  {/* ===== RESET TOKEN RESULT ===== */}
-                  {resetResult?.error && (
-                    <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-200 flex items-start gap-2">
-                      <ShieldAlert size={13} className="shrink-0 text-red-400 mt-0.5" />
-                      {resetResult.error}
-                    </div>
-                  )}
-
-                  {resetResult?.success && resetResult.newToken && (
-                    <div className="rounded-xl border border-yellow-400/30 bg-yellow-950/20 p-4 space-y-3">
-                      <div className="flex items-center gap-2 text-yellow-300 text-xs font-bold font-mono uppercase tracking-wider">
-                        <KeyRound size={13} />
-                        Token Baru — Berikan Kepada Anggota (Hanya Tampil Sekali)
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 text-[11px] font-mono text-yellow-100 bg-black/50 border border-yellow-900/40 rounded-lg p-2.5 break-all">
-                          {resetResult.newToken}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => copyText(resetResult.newToken!, `new-tk-${m.identity_id}`)}
-                          className="p-2 rounded-lg border border-yellow-900/40 bg-black/30 text-yellow-400 hover:text-yellow-200 transition shrink-0"
-                        >
-                          {copiedId === `new-tk-${m.identity_id}` ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                      </div>
-                      {/* Access QR with new token */}
-                      <div className="flex gap-3 items-start pt-1">
-                        <div className="bg-white p-1.5 rounded-lg shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={qrUrl(accessLink(origin, m.public_code, resetResult.newToken))}
-                            alt="QR Token Baru"
-                            className="h-24 w-24"
-                          />
-                        </div>
-                        <div className="text-[10px] text-yellow-200/70 space-y-1.5">
-                          <p className="font-bold text-yellow-300 text-xs">QR Login Baru</p>
-                          <p>Scan QR ini dari browser anggota untuk langsung login dengan token baru.</p>
-                          <button
-                            type="button"
-                            onClick={() => copyText(accessLink(origin, m.public_code, resetResult.newToken!), `new-ql-${m.identity_id}`)}
-                            className="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-200 font-semibold transition"
-                          >
-                            {copiedId === `new-ql-${m.identity_id}` ? <Check size={11} /> : <Copy size={11} />}
-                            Salin Link QR
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-[9px] text-yellow-400/60">
-                        Token lama sudah tidak berlaku. Token baru ini tidak tersimpan di server — catat sekarang.
-                      </p>
-                    </div>
-                  )}
-
-                  {claimResult?.error && (
-                    <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-200 flex items-start gap-2">
-                      <ShieldAlert size={13} className="shrink-0 text-red-400 mt-0.5" />
-                      {claimResult.error}
-                    </div>
-                  )}
-
-                  {claimResult?.success && claimResult.message && (
-                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200 flex items-start gap-2">
-                      <Check size={13} className="shrink-0 text-emerald-400 mt-0.5" />
-                      {claimResult.message}
-                    </div>
-                  )}
-
                   <div className="grid sm:grid-cols-2 gap-4">
                     {/* Left: identity data */}
                     <div className="space-y-2 text-xs">
@@ -392,7 +251,7 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                           {m.private_token_hash}
                         </code>
                         <p className="text-[9px] text-red-400/70 mt-1.5 font-semibold">
-                          ⛔ Jangan berikan nilai ini ke anggota — ini hash, bukan token asli.
+                          ⛔ Hash ini tidak dapat digunakan sebagai token login.
                         </p>
                       </div>
 
@@ -405,61 +264,6 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                           <p className="text-[9px] text-yellow-400/40 mt-1">Hash — kode asli tidak dapat dipulihkan admin.</p>
                         </div>
                       )}
-
-                      {/* Reset Token Button */}
-                      <div className="grid gap-2 pt-1">
-                        <button
-                          type="button"
-                          disabled={isClaimChanging}
-                          onClick={() => handleClaimStatus(m.identity_id, m.is_claimed ? 'unclaim' : 'claim')}
-                          className={`w-full inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[10px] font-bold transition disabled:opacity-50 ${
-                            m.is_claimed
-                              ? 'border border-yellow-500/40 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/40'
-                              : 'border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-950/60'
-                          }`}
-                        >
-                          {isClaimChanging ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
-                          {isClaimChanging
-                            ? 'Memproses Status...'
-                            : m.is_claimed
-                              ? 'Unclaim Anggota'
-                              : 'Claim Anggota'}
-                        </button>
-                        {awaitingConfirm ? (
-                          <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 space-y-2">
-                            <p className="text-[10px] text-red-300 font-semibold">
-                              ⚠ Konfirmasi: Token lama <strong>{m.display_name}</strong> akan langsung tidak berlaku. Lanjutkan?
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleResetToken(m.identity_id)}
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 text-[10px] font-bold transition"
-                              >
-                                <RefreshCcw size={11} />
-                                Ya, Reset Token
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmReset(null)}
-                                className="flex-1 rounded-lg border border-emerald-900/50 bg-black/30 text-emerald-400 px-3 py-1.5 text-[10px] transition hover:bg-emerald-950/40"
-                              >
-                                Batal
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isResetting}
-                            onClick={() => handleResetToken(m.identity_id)}
-                            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-orange-500/40 bg-orange-950/20 px-3 py-2 text-[10px] font-bold text-orange-300 hover:bg-orange-950/40 transition disabled:opacity-50"
-                          >
-                            {isResetting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCcw size={12} />}
-                            {isResetting ? 'Mereset Token...' : 'Reset Token (Generate Baru)'}
-                          </button>
-                        )}
-                      </div>
                     </div>
 
                     {/* Right: metadata & QR */}
