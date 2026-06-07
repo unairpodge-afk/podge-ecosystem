@@ -178,7 +178,7 @@ export default function IdentityAccessClient() {
                   onChange={(event) => setPublicCode(event.target.value.toUpperCase())}
                   required
                   className="w-full rounded-md border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
-                  placeholder="PODGE-FARM-2026-XXXX"
+                  placeholder="PODGE-FARM-YYYY-XXXXXXXX"
                 />
               </label>
 

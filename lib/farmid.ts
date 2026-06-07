@@ -25,6 +25,7 @@ export type FarmerIdRecord = {
   updated_at: string | Date;
   claimed_device_hash?: string | null;
   private_token_hash?: string;
+  photo_base64?: string | null;
 };
 
 export type PublicFarmerIdRecord = Omit<FarmerIdRecord, 'private_token_hash' | 'claimed_device_hash'>;
@@ -53,6 +54,7 @@ export async function ensureFarmerIdsTable() {
       is_claimed BOOLEAN NOT NULL DEFAULT false,
       claimed_at TIMESTAMPTZ,
       claimed_device_hash TEXT,
+      photo_base64 TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -66,7 +68,8 @@ export async function ensureFarmerIdsTable() {
       ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending',
       ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS verified_by UUID,
-      ADD COLUMN IF NOT EXISTS verification_note TEXT
+      ADD COLUMN IF NOT EXISTS verification_note TEXT,
+      ADD COLUMN IF NOT EXISTS photo_base64 TEXT
   `);
 }
 

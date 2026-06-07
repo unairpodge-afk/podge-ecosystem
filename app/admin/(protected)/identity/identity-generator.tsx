@@ -164,7 +164,7 @@ export default function IdentityGenerator() {
             <input
               name="linkedFarmId"
               className="w-full rounded-md border border-emerald-900/70 bg-black/40 p-3 text-sm text-emerald-50 outline-none transition focus:border-emerald-500"
-              placeholder="PODGE-FARM-2026-..."
+              placeholder="PODGE-FARM-YYYY-XXXXXXXX"
             />
           </label>
 

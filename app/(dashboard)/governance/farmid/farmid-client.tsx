@@ -46,6 +46,7 @@ type FarmerRecord = {
   is_claimed: boolean;
   claimed_at: string | null;
   updated_at: string;
+  photo_base64?: string | null;
 };
 
 type AccessState = {
@@ -141,14 +142,18 @@ export default function FarmIdClient() {
     return `${origin}/governance/farmid?mode=view&id=${encodeURIComponent(record.farm_id)}`;
   }, [origin, record]);
 
-  // Load photo from local storage based on active farm record
+  // Load photo from database (or local storage fallback) based on active farm record
   useEffect(() => {
     if (record) {
-      const savedPhoto = localStorage.getItem(`podge:farmid:photo:${record.farm_id}`);
-      if (savedPhoto) {
-        setPhotoUrl(savedPhoto);
+      if (record.photo_base64) {
+        setPhotoUrl(record.photo_base64);
       } else {
-        setPhotoUrl('');
+        const savedPhoto = localStorage.getItem(`podge:farmid:photo:${record.farm_id}`);
+        if (savedPhoto) {
+          setPhotoUrl(savedPhoto);
+        } else {
+          setPhotoUrl('');
+        }
       }
     }
   }, [record]);
@@ -304,6 +309,31 @@ export default function FarmIdClient() {
     setStatus(data.message || 'Data publik berhasil diperbarui.');
   }
 
+  const savePhotoToServer = useCallback(async (base64: string | null) => {
+    if (!record || !privateToken) {
+      return;
+    }
+    try {
+      const response = await fetch('/api/farmid/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: record.farm_id,
+          token: privateToken,
+          photo_base64: base64,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Gagal menyimpan foto ke server.');
+      } else {
+        setRecord((prev) => prev ? { ...prev, photo_base64: base64 } : null);
+      }
+    } catch (err) {
+      console.error('Error saving photo to server:', err);
+    }
+  }, [record, privateToken]);
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -313,6 +343,7 @@ export default function FarmIdClient() {
         setPhotoUrl(base64);
         if (record) {
           localStorage.setItem(`podge:farmid:photo:${record.farm_id}`, base64);
+          void savePhotoToServer(base64);
         }
       };
       reader.readAsDataURL(file);
@@ -516,7 +547,7 @@ export default function FarmIdClient() {
   const cardVillage = record ? record.village : (formVillage || 'Nama Desa');
   const cardDistrict = record ? record.district : (formDistrict || 'Kecamatan');
   const cardProvince = record ? record.province : (formProvince || 'Provinsi');
-  const cardFarmId = record ? record.farm_id : 'PODGE-ID-FARM-XXXX';
+  const cardFarmId = record ? record.farm_id : `PODGE-FARM-${new Date().getFullYear()}-XXXXXXXX`;
 
   // --- RENDERING DEDICATED VIEW MODE (TAB BARU - HANYA KARTU DIGITAL FINAL) ---
   if (isViewMode) {
@@ -1061,6 +1092,7 @@ export default function FarmIdClient() {
                   onClick={() => {
                     setPhotoUrl('');
                     localStorage.removeItem(`podge:farmid:photo:${record.farm_id}`);
+                    void savePhotoToServer(null);
                   }}
                   className="p-3 rounded-xl border border-red-950 bg-red-950/20 text-red-400 hover:bg-red-900/20 hover:text-red-200 transition"
                   title="Hapus Foto"

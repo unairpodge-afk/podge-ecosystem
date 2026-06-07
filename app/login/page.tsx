@@ -184,7 +184,7 @@ export default function LoginPage() {
                     required
                     value={publicCode}
                     onChange={(e) => setPublicCode(e.target.value.toUpperCase())}
-                    placeholder="PODGE-ID-FARM-XXXX"
+                    placeholder="PODGE-FARM-YYYY-XXXXXXXX"
                     className="w-full bg-black/50 border border-emerald-900/60 rounded-xl px-4 py-3 text-sm text-emerald-50 placeholder-emerald-800 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono text-center tracking-widest"
                   />
                 </div>
@@ -259,7 +259,7 @@ export default function LoginPage() {
                           Petani Mandiri / Kelompok Tani
                           {role === 'farmer' && <span className="text-[9px] font-mono bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">Active</span>}
                         </div>
-                        <div className="text-xs text-emerald-300/50 mt-0.5">Mendapatkan PODGE-ID-FARM</div>
+                        <div className="text-xs text-emerald-300/50 mt-0.5">Mendapatkan PODGE-FARM ID</div>
                       </div>
                     </button>
 
