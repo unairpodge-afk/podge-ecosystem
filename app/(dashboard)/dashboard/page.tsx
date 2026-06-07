@@ -39,6 +39,15 @@ export default async function DashboardPage() {
   let farmRecord: any = null;
   let farmerLogs: any[] = [];
   let farmerCertifications: any[] = [];
+  
+  // Additional industrial metrics for farmer
+  let totalWeight = 0;
+  let pricePremiumPerKg = 0;
+  let totalPremiumEarned = 0;
+  let isSustainable = false;
+  let esgScore = 0;
+  let completedChecks = 0;
+  let checklist = { stdb: false, sppl: false, geofence: false, coop: false };
 
   // 1. Fetch details if it is a Farmer
   if (role === 'farmer') {
@@ -63,6 +72,7 @@ export default async function DashboardPage() {
       );
       farmerLogs = logsRes.rows;
       totalLogsCount = farmerLogs.length;
+      totalWeight = farmerLogs.reduce((acc, log) => acc + Number(log.tbs_weight_kg), 0);
     } catch (err) {
       console.error('Gagal mengambil data logs untuk petani:', err);
     }
@@ -80,6 +90,19 @@ export default async function DashboardPage() {
     } catch (err) {
       console.error('Gagal mengambil data sertifikasi compliance:', err);
     }
+
+    isSustainable = farmRecord?.public_status === 'Terverifikasi' || farmerCertifications.length > 0;
+    pricePremiumPerKg = isSustainable ? 400 : 0; // Rp 400 premium per Kg for sustainable certified palm
+    totalPremiumEarned = totalWeight * pricePremiumPerKg;
+
+    checklist = {
+      stdb: !!farmRecord?.farm_id,
+      sppl: !!farmRecord?.farm_id,
+      geofence: farmRecord?.public_status === 'Terverifikasi',
+      coop: !!farmRecord?.cooperative_name
+    };
+    completedChecks = Object.values(checklist).filter(Boolean).length;
+    esgScore = Math.round((completedChecks / 4) * 100);
   } else {
     // 2. Fetch global statistics for admin/company/investor dashboards
     try {
@@ -142,29 +165,112 @@ export default async function DashboardPage() {
       {role === 'farmer' && (
         <div className="space-y-8">
           {/* Petani Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="glass-panel rounded-xl p-5 border border-emerald-950">
               <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Status FarmID</p>
               <p className="text-2xl font-extrabold text-white mt-2 font-space">
-                {farmRecord ? 'Lahan Terhubung' : 'Belum Ada Klaim'}
+                {farmRecord ? 'Terhubung' : 'Belum Ada Klaim'}
               </p>
               <p className="text-xs text-emerald-200/55 mt-1">
                 {farmRecord ? `ID: ${farmRecord.farm_id}` : 'Silakan klaim FarmID Anda'}
               </p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-emerald-950">
-              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">TBS Disetor Anda</p>
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Setoran TBS</p>
               <p className="text-2xl font-extrabold text-white mt-2 font-space">{totalLogsCount} Batch</p>
-              <p className="text-xs text-emerald-200/55 mt-1">Pengiriman TBS yang Anda catat</p>
+              <p className="text-xs text-emerald-200/55 mt-1">{totalWeight.toLocaleString('id-ID')} Kg Total Volume</p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-emerald-950">
-              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Sertifikasi Mandiri</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">
-                {farmerCertifications.length > 0 ? farmerCertifications[0].certification_type : 'Petani Swadaya'}
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Incentive Hijau</p>
+              <p className="text-2xl font-extrabold text-emerald-400 mt-2 font-space">
+                Rp {totalPremiumEarned.toLocaleString('id-ID')}
               </p>
-              <p className="text-xs text-emerald-200/55 mt-1">
-                {farmerCertifications.length > 0 ? 'Tersertifikasi ISPO/RSPO' : 'Tidak wajib ESG korporasi'}
+              <p className="text-xs text-emerald-200/55 mt-1">Rp {pricePremiumPerKg}/Kg Premi Berkelanjutan</p>
+            </div>
+            <div className="glass-panel rounded-xl p-5 border border-emerald-950">
+              <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Kesiapan ISPO/ESG</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">{esgScore}%</p>
+              <p className="text-xs text-emerald-200/55 mt-1">{completedChecks} dari 4 Syarat Terpenuhi</p>
+            </div>
+          </div>
+
+          {/* New Section: Evaluasi Kepatuhan Sawit Berkelanjutan */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Price Premium Premium card */}
+            <div className="glass-panel rounded-xl p-6 border border-emerald-500/20 lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white font-space flex items-center gap-2">
+                  <Coins size={18} className="text-emerald-400" />
+                  Kalkulator Premium Payout (Incentive Hijau)
+                </h3>
+                <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider">
+                  Industrial Premium
+                </span>
+              </div>
+              <p className="text-xs text-emerald-200/60 leading-relaxed">
+                Pabrik Kelapa Sawit (PKS) memberikan harga beli premium lebih tinggi untuk TBS yang terbukti bebas deforestasi (EUDR-compliant) dan memiliki koordinat kebun (FarmID) yang valid.
               </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3 bg-black/40 rounded-lg border border-emerald-950/80">
+                  <span className="text-[9px] text-emerald-400 font-mono block">HARGA PASAR DASAR</span>
+                  <span className="text-sm font-bold text-emerald-200/50 mt-1 block">Rp 2.450 / Kg</span>
+                </div>
+                <div className="p-3 bg-emerald-950/25 rounded-lg border border-emerald-500/20">
+                  <span className="text-[9px] text-emerald-400 font-mono block">PREMI ESG (LAHAN OK)</span>
+                  <span className="text-sm font-bold text-emerald-400 mt-1 block">+ Rp 400 / Kg</span>
+                </div>
+                <div className="p-3 bg-black/40 rounded-lg border border-emerald-950/80">
+                  <span className="text-[9px] text-emerald-400 font-mono block">HARGA SUSTAINABLE</span>
+                  <span className="text-sm font-bold text-white mt-1 block">Rp 2.850 / Kg</span>
+                </div>
+              </div>
+              <div className="p-3.5 bg-emerald-950/30 rounded-lg border border-emerald-900/40 text-xs flex items-center justify-between">
+                <span className="text-emerald-200/80">Total Tambahan Pendapatan Bersih Anda:</span>
+                <span className="font-extrabold text-base text-emerald-400">Rp {totalPremiumEarned.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
+            {/* Replanting Financing & ESG Checklist */}
+            <div className="glass-panel rounded-xl p-6 border border-emerald-500/15 flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-white font-space flex items-center gap-2 mb-3">
+                  <Scale size={16} className="text-emerald-400" />
+                  Syarat Kepatuhan EUDR & ISPO
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between p-2 bg-black/25 rounded border border-emerald-950">
+                    <span className="text-emerald-200/70">Nomor Registrasi STDB</span>
+                    <span className={`font-mono text-[10px] font-bold ${checklist.stdb ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                      {checklist.stdb ? '✔ Tersedia' : '✖ Dibutuhkan'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-black/25 rounded border border-emerald-950">
+                    <span className="text-emerald-200/70">Dokumen Lingkungan (SPPL)</span>
+                    <span className={`font-mono text-[10px] font-bold ${checklist.sppl ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                      {checklist.sppl ? '✔ Lengkap' : '✖ Dibutuhkan'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-black/25 rounded border border-emerald-950">
+                    <span className="text-emerald-200/70">Validasi Geofence (EUDR)</span>
+                    <span className={`font-mono text-[10px] font-bold ${checklist.geofence ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                      {checklist.geofence ? '✔ Deforestation-Free' : '✖ Menunggu Review'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-black/25 rounded border border-emerald-950">
+                    <span className="text-emerald-200/70">Mitra Koperasi Terdaftar</span>
+                    <span className={`font-mono text-[10px] font-bold ${checklist.coop ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                      {checklist.coop ? '✔ Terhubung' : '✖ Belum Terhubung'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-emerald-950 flex items-center justify-between text-xs">
+                <span className="text-emerald-200/50">Pembiayaan Replanting Sukuk:</span>
+                <span className={`font-bold ${esgScore >= 75 ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                  {esgScore >= 75 ? '✔ Kualifikasi Terbuka' : '✖ Lahan Belum Siap'}
+                </span>
+              </div>
             </div>
           </div>
 
