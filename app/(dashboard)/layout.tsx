@@ -11,6 +11,7 @@ import {
   Leaf,
   Coins,
   User,
+  Fingerprint,
   Menu,
   X,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ export default function DashboardLayout({
     {
       category: "Governance Layer",
       items: [
+        { name: "FarmID Claim", href: "/governance/farmid", icon: Fingerprint },
         { name: "Blockchain Traceability", href: "/governance/traceability", icon: Layers },
         { name: "Compliance Monitoring", href: "/governance/compliance", icon: ShieldCheck }
       ]
