@@ -559,7 +559,7 @@ export default async function DashboardPage() {
 
           {/* Downstream supply chain visualization for PKS */}
           <div className="border-t border-blue-950/40 pt-6">
-            <DownstreamViewer />
+            <DownstreamViewer identity={identity} />
           </div>
         </div>
       )}
@@ -641,7 +641,7 @@ export default async function DashboardPage() {
 
           {/* Downstream supply chain visualization for Investor */}
           <div className="border-t border-amber-950/40 pt-6">
-            <DownstreamViewer />
+            <DownstreamViewer identity={identity} />
           </div>
         </div>
       )}
