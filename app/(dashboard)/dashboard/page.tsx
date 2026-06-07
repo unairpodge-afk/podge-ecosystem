@@ -321,11 +321,17 @@ export default async function DashboardPage() {
                         <div className="text-right">
                           <p className="font-bold text-emerald-400">{log.tbs_weight_kg} Kg</p>
                           <span className={`inline-block text-[9px] font-semibold px-2 py-0.5 rounded-full mt-1 border ${
-                            log.status === 'Verified' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                            log.status === 'Received' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' :
-                            'bg-lime-500/10 text-lime-300 border-lime-500/20'
+                            log.status === 'Terverifikasi' || log.status === 'Verified'
+                              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                              : log.status === 'Ditolak' || log.status === 'Rejected'
+                              ? 'bg-red-500/10 text-red-300 border-red-500/20'
+                              : 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20'
                           }`}>
-                            {log.status}
+                            {log.status === 'Terverifikasi' || log.status === 'Verified'
+                              ? 'Terverifikasi'
+                              : log.status === 'Ditolak' || log.status === 'Rejected'
+                              ? 'Ditolak / Invalid'
+                              : 'Menunggu Verifikasi'}
                           </span>
                         </div>
                       </div>
@@ -346,7 +352,7 @@ export default async function DashboardPage() {
                 <p className="font-bold flex items-center gap-1.5 mb-1 font-mono uppercase tracking-wider text-[9px] text-emerald-400">
                   <HelpCircle size={12} /> Catatan Panen Mandiri:
                 </p>
-                Bagian ini memantau status pengiriman TBS Anda. Status <strong>Received</strong> artinya buah sawit sudah sampai dan ditimbang di pabrik. Koperasi akan otomatis mengalokasikan bagi hasil penjualan ke rekening terdaftar Anda.
+                Bagian ini memantau status pengiriman TBS Anda. Status <strong>Terverifikasi</strong> artinya pengiriman telah disetujui oleh verifikator. Status <strong>Menunggu Verifikasi</strong> berarti kiriman Anda sedang dalam proses audit timbangan, dan status <strong>Ditolak / Invalid</strong> menandakan adanya ketidaksesuaian data.
               </div>
             </div>
 

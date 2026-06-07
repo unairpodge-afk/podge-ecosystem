@@ -28,7 +28,7 @@ export default async function TraceabilityPage() {
     const farmerName = formData.get('farmer_name') as string;
     const tbsWeightKg = Number(formData.get('tbs_weight_kg'));
     const pksDestination = formData.get('pks_destination') as string;
-    const status = formData.get('status') as string;
+    const status = 'Dalam Proses';
 
     const rawData = `${batchId}-${farmerName}-${tbsWeightKg}-${pksDestination}-${Date.now()}`;
     const hash = '0x' + crypto.createHash('sha256').update(rawData).digest('hex');
@@ -123,14 +123,7 @@ export default async function TraceabilityPage() {
             <input type="text" name="pks_destination" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 outline-none transition focus:border-emerald-500" placeholder="Misal: PKS PT Aura Sawit" />
           </div>
 
-          <div className="flex flex-col md:col-span-2">
-            <label className="text-sm text-emerald-200/70 mb-1">Status Verifikasi</label>
-            <select name="status" className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 outline-none transition focus:border-emerald-500">
-              <option value="Terverifikasi">Terverifikasi</option>
-              <option value="Dalam Proses">Dalam Proses</option>
-              <option value="Tertunda">Tertunda</option>
-            </select>
-          </div>
+
 
           <div className="md:col-span-2 mt-2">
             <button type="submit" className="w-full bg-emerald-500 text-black font-bold py-2.5 px-4 rounded-md hover:bg-emerald-400 transition-colors shadow-[0_0_20px_rgba(16,185,129,0.25)]">
