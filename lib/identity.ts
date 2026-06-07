@@ -76,12 +76,12 @@ export async function ensurePodgeIdentitiesTable() {
   `);
 
   await query(`
-    ALTER TABLE farmer_ids
+    ALTER TABLE IF EXISTS farmer_ids
       ADD COLUMN IF NOT EXISTS identity_id UUID
   `);
 
   await query(`
-    ALTER TABLE admin_users
+    ALTER TABLE IF EXISTS admin_users
       ADD COLUMN IF NOT EXISTS identity_id UUID
   `);
 }
