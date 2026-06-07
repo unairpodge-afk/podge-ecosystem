@@ -1,8 +1,18 @@
 import { Pool } from 'pg';
 
-// Mengambil URL database dari environment variables
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+const dbUrl = new URL(databaseUrl.replace(/\?sslmode=require.*$/, ''));
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  user: dbUrl.username,
+  password: dbUrl.password,
+  host: dbUrl.hostname,
+  port: Number(dbUrl.port),
+  database: dbUrl.pathname.slice(1),
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
