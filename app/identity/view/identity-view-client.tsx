@@ -21,6 +21,8 @@ function identityTypeLabel(type: string) {
     logistics: 'Logistik',
     finance: 'Keuangan',
     public_institution: 'Instansi Publik',
+    company: 'Perusahaan',
+    investor: 'Investor',
   };
 
   return labels[type] || type;

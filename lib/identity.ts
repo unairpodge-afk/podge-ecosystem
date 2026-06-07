@@ -10,7 +10,9 @@ export type PodgeIdentityType =
   | 'admin'
   | 'logistics'
   | 'finance'
-  | 'public_institution';
+  | 'public_institution'
+  | 'company'
+  | 'investor';
 
 export type PodgeIdentityRecord = {
   identity_id: string;
@@ -48,6 +50,8 @@ const codePrefixes: Record<PodgeIdentityType, string> = {
   logistics: 'LOG',
   finance: 'FIN',
   public_institution: 'PUB',
+  company: 'PERUSAHAAN',
+  investor: 'INVESTOR',
 };
 
 export async function ensurePodgeIdentitiesTable() {
@@ -75,6 +79,23 @@ export async function ensurePodgeIdentitiesTable() {
     )
   `);
 
+  try {
+    await query(`
+      ALTER TABLE podge_identities 
+      DROP CONSTRAINT IF EXISTS podge_identities_identity_type_check
+    `);
+    await query(`
+      ALTER TABLE podge_identities 
+      ADD CONSTRAINT podge_identities_identity_type_check CHECK (
+        identity_type IN (
+          'farmer', 'cooperative', 'mill', 'auditor', 'admin', 'logistics', 'finance', 'public_institution', 'company', 'investor'
+        )
+      )
+    `);
+  } catch (err) {
+    console.error('Error updating podge_identities constraint:', err);
+  }
+
   await query(`
     ALTER TABLE IF EXISTS farmer_ids
       ADD COLUMN IF NOT EXISTS identity_id UUID
@@ -89,7 +110,7 @@ export async function ensurePodgeIdentitiesTable() {
 export function createPodgePublicCode(identityType: PodgeIdentityType) {
   const prefix = codePrefixes[identityType];
   const suffix = crypto.randomBytes(4).toString('hex').toUpperCase();
-  return `PODGE-${prefix}-${new Date().getFullYear()}-${suffix}`;
+  return `PODGE-ID-${prefix}-${suffix}`;
 }
 
 export function createPodgePrivateToken() {
@@ -122,6 +143,31 @@ export async function setIdentitySession(identity: Pick<PodgeIdentityRecord, 'id
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
+}
+
+export async function getIdentitySession(): Promise<PodgeIdentityRecord | null> {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('podge_identity_session');
+    if (!sessionCookie || !sessionCookie.value) {
+      return null;
+    }
+    
+    const raw = Buffer.from(sessionCookie.value, 'base64url').toString('utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed.identityId || !parsed.publicCode) {
+      return null;
+    }
+    
+    await ensurePodgeIdentitiesTable();
+    const res = await query<PodgeIdentityRecord>(
+      'SELECT * FROM podge_identities WHERE identity_id = $1 AND public_code = $2 LIMIT 1',
+      [parsed.identityId, parsed.publicCode]
+    );
+    return res.rows[0] || null;
+  } catch {
+    return null;
+  }
 }
 
 export function toPublicIdentity(record: PodgeIdentityRecord): PublicPodgeIdentityRecord {

@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
 import PodgeExplanation from './components/podge-explanation';
+import { getIdentitySession } from '@/lib/identity';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MainLandingPage() {
+  const identity = await getIdentitySession();
+
   let totalSukukProjects = 0;
   let totalTraceabilityLogs = 0;
   let totalVolumeTbs = 0;
@@ -66,17 +69,32 @@ export default async function MainLandingPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link href="/admin/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
-            ADMIN LOGIN
-          </Link>
-          <Link href="/governance/farmid" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
-            FARMID CLAIM
-          </Link>
-          <Link href="/governance/traceability" className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-xs font-bold text-white rounded-lg group bg-gradient-to-br from-emerald-500 to-green-800 group-hover:from-emerald-500 group-hover:to-green-800 hover:text-white focus:ring-4 focus:outline-none focus:ring-green-800">
-            <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-black rounded-md group-hover:bg-opacity-0 font-space tracking-wider">
-              ENTER APPLICATION
-            </span>
-          </Link>
+          {identity ? (
+            <>
+              <span className="text-xs font-mono text-emerald-400 mr-2 bg-emerald-950/45 px-3 py-1.5 rounded-lg border border-emerald-800/30">
+                Halo, {identity.display_name}
+              </span>
+              <Link href="/dashboard" className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-xs font-bold text-white rounded-lg group bg-gradient-to-br from-emerald-500 to-green-800 group-hover:from-emerald-500 group-hover:to-green-800 hover:text-white focus:ring-4 focus:outline-none focus:ring-green-800">
+                <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-black rounded-md group-hover:bg-opacity-0 font-space tracking-wider">
+                  BUKA DASHBOARD
+                </span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/admin/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
+                ADMIN LOGIN
+              </Link>
+              <Link href="/login" className="inline-flex items-center justify-center rounded-lg border border-emerald-700/60 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/60 hover:text-white font-space tracking-wider">
+                MASUK / DAFTAR
+              </Link>
+              <Link href="/login" className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-xs font-bold text-white rounded-lg group bg-gradient-to-br from-emerald-500 to-green-800 group-hover:from-emerald-500 group-hover:to-green-800 hover:text-white focus:ring-4 focus:outline-none focus:ring-green-800">
+                <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-black rounded-md group-hover:bg-opacity-0 font-space tracking-wider">
+                  MASUK APLIKASI
+                </span>
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -120,8 +138,8 @@ export default async function MainLandingPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <Link href="/governance/traceability" className="bg-emerald-500 hover:bg-emerald-400 text-black text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:scale-[1.02]">
-              Launch Traceability Ledger
+            <Link href={identity ? "/dashboard" : "/login"} className="bg-emerald-500 hover:bg-emerald-400 text-black text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:scale-[1.02]">
+              {identity ? "Buka Dashboard" : "Masuk ke Aplikasi"}
             </Link>
             <Link href="/value-creation/green-sukuk" className="border border-emerald-800/60 hover:bg-emerald-950/30 text-white text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide">
               Explore Green Financing

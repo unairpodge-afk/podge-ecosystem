@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,7 +14,32 @@ import {
   Fingerprint,
   Menu,
   X,
+  LogOut,
+  Building2
 } from 'lucide-react';
+
+interface UserSession {
+  display_name: string;
+  public_code: string;
+  identity_type: string;
+}
+
+function identityTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    farmer: 'Petani Mandiri',
+    cooperative: 'Koperasi',
+    mill: 'PKS / Pabrik',
+    auditor: 'Auditor',
+    admin: 'Admin',
+    logistics: 'Logistik',
+    finance: 'Keuangan',
+    public_institution: 'Instansi Publik',
+    company: 'Perusahaan',
+    investor: 'Investor',
+  };
+
+  return labels[type] || type;
+}
 
 export default function DashboardLayout({
   children,
@@ -23,6 +48,38 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<UserSession | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const response = await fetch('/api/identity/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setUser(data.user);
+          }
+        }
+      } catch (error) {
+        console.error('Gagal memuat sesi:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    void checkSession();
+  }, []);
+
+  async function handleLogout() {
+    try {
+      const response = await fetch('/api/identity/logout', { method: 'POST' });
+      if (response.ok) {
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Gagal keluar:', error);
+    }
+  }
 
   const isActive = (path: string) => pathname === path;
 
@@ -30,7 +87,7 @@ export default function DashboardLayout({
     { 
       category: "Main",
       items: [
-        { name: "Overview Ecosystem", href: "/", icon: LayoutDashboard }
+        { name: "Overview Dashboard", href: "/dashboard", icon: LayoutDashboard }
       ]
     },
     {
@@ -60,15 +117,15 @@ export default function DashboardLayout({
   const renderMenu = () => (
     <>
       <div className="p-6 border-b border-emerald-900/50 bg-black/30">
-        <div className="flex items-center space-x-2">
-          <div className="p-2 bg-emerald-500 rounded-lg text-black shadow-[0_0_20px_rgba(16,185,129,0.45)]">
+        <Link href="/" className="flex items-center space-x-2 group">
+          <div className="p-2 bg-emerald-500 rounded-lg text-black shadow-[0_0_20px_rgba(16,185,129,0.45)] transition group-hover:scale-105">
             <Leaf size={20} />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-wider text-emerald-50 font-space">PODGE</h1>
+            <h1 className="text-xl font-bold tracking-wider text-emerald-50 font-space group-hover:text-emerald-400 transition-colors">PODGE</h1>
             <p className="text-[10px] text-emerald-400 font-mono tracking-widest uppercase">Ecosystem Node v2.0</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
@@ -138,14 +195,38 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-semibold text-emerald-50">Arva Athallah</p>
-              <p className="text-xs text-emerald-400/70 font-medium">Chief Researcher</p>
-            </div>
-            <div className="h-10 w-10 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-bold shadow-[0_0_18px_rgba(16,185,129,0.35)] border border-emerald-300/30">
-              <User size={18} />
-            </div>
+          <div className="flex items-center gap-4">
+            {loading ? (
+              <div className="h-5 w-24 bg-emerald-900/20 animate-pulse rounded"></div>
+            ) : user ? (
+              <>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-emerald-50">{user.display_name}</p>
+                  <p className="text-[10px] text-emerald-400/80 font-mono">{identityTypeLabel(user.identity_type)}</p>
+                </div>
+                <div className={`h-10 w-10 rounded-lg text-black flex items-center justify-center font-bold shadow-[0_0_18px_rgba(16,185,129,0.25)] border border-emerald-300/10 ${
+                  user.identity_type === 'farmer' ? 'bg-emerald-500' : user.identity_type === 'company' ? 'bg-blue-500' : 'bg-amber-500'
+                }`}>
+                  {user.identity_type === 'farmer' && <User size={18} />}
+                  {user.identity_type === 'company' && <Building2 size={18} />}
+                  {user.identity_type === 'investor' && <Coins size={18} />}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  title="Keluar dari Sistem"
+                  className="p-2 rounded-lg border border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-900/20 hover:text-red-200 transition"
+                >
+                  <LogOut size={16} />
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold px-4 py-2 rounded-lg transition"
+              >
+                Masuk
+              </Link>
+            )}
           </div>
         </header>
 
