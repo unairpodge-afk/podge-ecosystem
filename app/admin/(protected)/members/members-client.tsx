@@ -90,6 +90,26 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleHashes, setVisibleHashes] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    if (!confirm('Peringatan: Aksi ini akan menambahkan 100 data simulasi petani ke dalam database secara permanen. Lanjutkan?')) return;
+    setIsSeeding(true);
+    try {
+      const res = await fetch('/api/admin/seed-farmers', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        window.location.reload();
+      } else {
+        alert('Gagal: ' + data.error);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
 
 
@@ -155,6 +175,13 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        <button
+          onClick={handleSeed}
+          disabled={isSeeding}
+          className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-black shadow-md hover:bg-emerald-400 disabled:opacity-50 transition"
+        >
+          {isSeeding ? 'Memuat 100 Petani...' : '🔥 Generate 100 Petani (ABM)'}
+        </button>
         <span className="self-center text-xs text-emerald-400/60 font-mono">
           {filtered.length} dari {memberRows.length} anggota
         </span>
@@ -324,6 +351,15 @@ export default function MembersClient({ members }: { members: MemberRow[] }) {
                             Lihat FarmID
                           </a>
                         )}
+                        <a
+                          href={`/api/admin/impersonate?id=${m.identity_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-purple-800/50 bg-purple-950/20 px-3 py-1.5 text-[10px] font-mono text-purple-300 hover:bg-purple-950/40 transition"
+                        >
+                          <User size={11} />
+                          Akses Profil (Intervene)
+                        </a>
                       </div>
                     </div>
                   </div>
