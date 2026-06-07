@@ -87,8 +87,7 @@ export async function ensureAdminGovernanceTables() {
   await query(`
     INSERT INTO admin_users (email, full_name, role_id, is_active)
     VALUES 
-      ('unairpodge@gmail.com', 'Unairpodge BPDP Admin', 'super_admin', true),
-      ('admin@podge.id', 'PODGE Super Admin', 'super_admin', true)
+      ('unairpodge@gmail.com', 'Unairpodge BPDP Admin', 'super_admin', true)
     ON CONFLICT (email) DO NOTHING
   `);
 }
