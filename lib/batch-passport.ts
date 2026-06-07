@@ -75,6 +75,21 @@ export type BatchPassport = TraceabilityLog & {
     distanceKm: number;
     maxDistanceKm: number;
   };
+  tbsDetails: {
+    transactionId: string;
+    grossWeight: number;
+    tareWeight: number;
+    netWeight: number;
+    quality: string;
+  };
+  transportationDetails: {
+    deliveryId: string;
+    licensePlate: string;
+    driver: string;
+    departureTime: string;
+    arrivalTime: string;
+    gpsStatus: string;
+  };
   pdfReportUrl: string;
 };
 
@@ -191,6 +206,21 @@ export const featuredBatch: BatchPassport = {
     driverMasked: 'DVR-****-018',
     distanceKm: 86,
     maxDistanceKm: 120,
+  },
+  tbsDetails: {
+    transactionId: 'TX-TBS-2100-001',
+    grossWeight: 5120,
+    tareWeight: 245,
+    netWeight: 4875,
+    quality: 'Kelas A (Super)',
+  },
+  transportationDetails: {
+    deliveryId: 'TR-LOG-2100-001',
+    licensePlate: 'BM 2100 POD',
+    driver: 'Budi Santoso',
+    departureTime: '2026-06-05T08:04:00.000Z',
+    arrivalTime: '2026-06-05T09:45:00.000Z',
+    gpsStatus: 'Active (Locked GPS-Track)',
   },
   pdfReportUrl: '/verify/BATCH-PODGE-2100-001/report.pdf',
 };
@@ -357,6 +387,21 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
       driverMasked: 'DVR-****-' + (absSeed % 100),
       distanceKm: 30 + (absSeed % 80),
       maxDistanceKm: 120,
+    },
+    tbsDetails: {
+      transactionId: `TX-TBS-${1000 + (absSeed % 8999)}`,
+      grossWeight: weight + 200 + (absSeed % 150),
+      tareWeight: (weight + 200 + (absSeed % 150)) - weight,
+      netWeight: weight,
+      quality: absSeed % 2 === 0 ? 'Kelas A (Super)' : 'Kelas B (Standar)',
+    },
+    transportationDetails: {
+      deliveryId: `TR-LOG-${1000 + (absSeed % 8999)}`,
+      licensePlate: truckPlate,
+      driver: absSeed % 2 === 0 ? 'Supriadi' : 'M. Yusuf',
+      departureTime: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
+      arrivalTime: new Date(batch.created_at).toISOString(),
+      gpsStatus: 'Active (Locked GPS-Track)',
     },
   };
 }

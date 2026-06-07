@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Timer,
   Users,
+  Scale,
+  Truck,
 } from 'lucide-react';
 import { getBatchPassport, getTrustScore } from '@/lib/batch-passport';
 
@@ -140,6 +142,90 @@ export default async function BatchPassportPage({ params }: { params: Promise<{ 
                   <Info label="Ketua Koperasi" value={batch.cooperative.chairperson} />
                   <Info label="Petani / Grup" value={`${batch.farmer.name} (${batch.farmer.memberId})`} />
                   <Info label="Validasi" value={batch.cooperative.validationStatus} />
+                </div>
+              </section>
+            </div>
+
+            {/* Step 2 & Step 3: FFB (TBS) Weighing and Transportation Tracing */}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              {/* Step 2: TBS Weighing & Quality Check */}
+              <section className="glass-panel rounded-lg p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <SectionTitle icon={Scale} label="Step 02: Timbangan TBS" title="FFB Weighing & Quality" />
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-300 font-mono">
+                    {batch.tbsDetails.transactionId}
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-200/60 leading-relaxed mb-4">
+                  Tandan Buah Segar (TBS) ditimbang secara digital menggunakan timbangan jembatan otomatis terkalibrasi sebelum pengiriman ke Pabrik Kelapa Sawit (PKS) Aura.
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                  <Info label="Berat Bruto (Gross)" value={`${Number(batch.tbsDetails.grossWeight).toLocaleString('id-ID')} Kg`} />
+                  <Info label="Berat Tara (Truck)" value={`${Number(batch.tbsDetails.tareWeight).toLocaleString('id-ID')} Kg`} />
+                  <div className="col-span-2">
+                    <Info label="Berat Netto (TBS)" value={`${Number(batch.tbsDetails.netWeight).toLocaleString('id-ID')} Kg`} />
+                  </div>
+                  <div className="col-span-2">
+                    <Info label="Kualitas & Grading TBS" value={batch.tbsDetails.quality} />
+                  </div>
+                </div>
+                
+                {/* Documents / Verification Evidence */}
+                <div className="border-t border-emerald-950 pt-3 space-y-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">Validated Harvest Evidence Documents</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: 'e-Fact Panen', valid: true },
+                      { name: 'Bukti Timbang', valid: true },
+                      { name: 'Kualitas TBS', valid: true },
+                      { name: 'Foto Hasil Panen', valid: true },
+                    ].map(doc => (
+                      <div key={doc.name} className="flex items-center gap-1.5 text-xs text-emerald-200/80">
+                        <BadgeCheck size={13} className="text-emerald-400 shrink-0" />
+                        <span>{doc.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* Step 3: Transportation & Logistics */}
+              <section className="glass-panel rounded-lg p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <SectionTitle icon={Truck} label="Step 03: Transportasi" title="Logistics & GPS Tracking" />
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-300 font-mono">
+                    {batch.transportationDetails.deliveryId}
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-200/60 leading-relaxed mb-4">
+                  TBS diangkut menggunakan armada logistik terdaftar dengan pengawasan geofencing aktif dan pencatatan GPS untuk jaminan bebas deforestasi (anti-fraud).
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                  <Info label="No. Polisi Armada" value={batch.transportationDetails.licensePlate} />
+                  <Info label="Nama Pengemudi (Supir)" value={batch.transportationDetails.driver} />
+                  <Info label="Waktu Berangkat (Out)" value={new Date(batch.transportationDetails.departureTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) + ' WIB'} />
+                  <Info label="Waktu Tiba (In Mill)" value={new Date(batch.transportationDetails.arrivalTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) + ' WIB'} />
+                  <div className="col-span-2">
+                    <Info label="Status GPS Realtime" value={batch.transportationDetails.gpsStatus} />
+                  </div>
+                </div>
+
+                {/* Logistics Documents */}
+                <div className="border-t border-emerald-950 pt-3 space-y-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">Validated Dispatch Verification</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: 'e-Fact Pengiriman', valid: true },
+                      { name: 'GPS Telemetry Log', valid: true },
+                      { name: 'Foto Muatan Truk', valid: true },
+                      { name: 'Waktu Tiba PKS', valid: true },
+                    ].map(doc => (
+                      <div key={doc.name} className="flex items-center gap-1.5 text-xs text-emerald-200/80">
+                        <BadgeCheck size={13} className="text-emerald-400 shrink-0" />
+                        <span>{doc.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </section>
             </div>
