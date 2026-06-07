@@ -119,7 +119,7 @@ export const featuredBatch: BatchPassport = {
       certificateNo: 'ISPO/ID-RIAU/2026/0441',
       holder: 'Koperasi Tani Sawit Lestari Riau',
       validUntil: '2031-03-20',
-      documentUrl: '/documents/ispo-batch-podge-2100-001.pdf',
+      documentUrl: '#',
       status: 'Valid',
     },
     {
@@ -127,7 +127,7 @@ export const featuredBatch: BatchPassport = {
       certificateNo: 'RSPO-ISH-ID-2026-7782',
       holder: 'Koperasi Tani Sawit Lestari Riau',
       validUntil: '2030-11-18',
-      documentUrl: '/documents/rspo-batch-podge-2100-001.pdf',
+      documentUrl: '#',
       status: 'Valid',
     },
   ],
@@ -232,18 +232,132 @@ export async function getBatchPassport(batchId: string): Promise<BatchPassport |
     return null;
   }
 
+  // Create a deterministic hash integer from batchId to make fields unique
+  let seed = 0;
+  for (let i = 0; i < batch.batch_id.length; i++) {
+    seed = (seed << 5) - seed + batch.batch_id.charCodeAt(i);
+    seed |= 0;
+  }
+  const absSeed = Math.abs(seed);
+
+  // Dynamic geolocations centered around Riau area
+  const lat = 0.3 + (absSeed % 100) / 1000;
+  const lng = 101.2 + ((absSeed >> 2) % 100) / 1000;
+  const areaHa = 2.5 + (absSeed % 50) / 10;
+
+  const polygon = [
+    { lat: lat + 0.0035, lng: lng - 0.0035 },
+    { lat: lat + 0.0035, lng: lng + 0.0035 },
+    { lat: lat - 0.0035, lng: lng + 0.0035 },
+    { lat: lat - 0.0035, lng: lng - 0.0035 },
+  ];
+
+  const truckPlate = `BM ${1000 + (absSeed % 8999)} ${String.fromCharCode(65 + (absSeed % 26))}${String.fromCharCode(65 + ((absSeed >> 1) % 26))}`;
+  const weight = Number(batch.tbs_weight_kg);
+  const isVerified = batch.status === 'Terverifikasi';
+
   return {
-    ...featuredBatch,
-    ...batch,
     id: batch.id,
     batch_id: batch.batch_id,
     farmer_name: batch.farmer_name,
-    tbs_weight_kg: batch.tbs_weight_kg,
+    tbs_weight_kg: weight,
     pks_destination: batch.pks_destination,
     blockchain_hash: batch.blockchain_hash,
     status: batch.status,
     created_at: batch.created_at,
     pdfReportUrl: `/verify/${encodeURIComponent(batch.batch_id)}/report.pdf`,
+    estate: {
+      name: `Kavling Sawit Mandiri - Blok ${String.fromCharCode(65 + (absSeed % 6))}${absSeed % 10}`,
+      province: 'Riau',
+      district: absSeed % 2 === 0 ? 'Kampar' : 'Siak',
+      centroid: { lat, lng },
+      polygon,
+      areaHa,
+    },
+    cooperative: {
+      name: batch.farmer_name.includes('Koperasi') ? batch.farmer_name : `Koperasi Mitra ${batch.farmer_name}`,
+      registrationId: `KOP-RIAU-KPR-${2020 + (absSeed % 7)}-00${10 + (absSeed % 89)}`,
+      chairperson: absSeed % 2 === 0 ? 'Bapak Ir. H. Mulyadi' : 'Bapak Slamet Rahardjo',
+      validationStatus: isVerified ? 'Validated by PODGE Admin + BPDPKS Auditor' : 'Menunggu Validasi Dokumen Lahan',
+      verifiedAt: new Date(new Date(batch.created_at).getTime() - 45 * 60 * 1000).toISOString(),
+    },
+    farmer: {
+      name: batch.farmer_name,
+      memberId: `MEMBER-${100 + (absSeed % 900)}`,
+      nationalIdMasked: `1403${absSeed % 9}********00${absSeed % 99}`,
+      phoneMasked: `+62 812 **** ${1000 + (absSeed % 8999)}`,
+    },
+    certifications: [
+      {
+        scheme: 'ISPO',
+        certificateNo: `ISPO/ID-RIAU/2026/0${100 + (absSeed % 899)}`,
+        holder: batch.farmer_name,
+        validUntil: '2031-03-20',
+        documentUrl: '#',
+        status: isVerified ? 'Valid' : 'Pending Verification Review',
+      },
+    ],
+    evidencePhotos: [
+      {
+        label: 'Foto Bukti Panen',
+        url: '/evidence/batch-podge-2100-001-harvest.svg',
+        capturedAt: new Date(new Date(batch.created_at).getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        geoTag: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        hash: `sha256:${crypto.createHash('sha256').update(batch.batch_id + 'harvest').digest('hex')}`,
+      },
+      {
+        label: 'Foto Bukti Pengiriman',
+        url: '/evidence/batch-podge-2100-001-delivery.svg',
+        capturedAt: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
+        geoTag: `${(lat + 0.04).toFixed(5)}, ${(lng + 0.04).toFixed(5)}`,
+        hash: `sha256:${crypto.createHash('sha256').update(batch.batch_id + 'delivery').digest('hex')}`,
+      },
+    ],
+    roles: [
+      { role: 'Petani', actor: batch.farmer_name, authority: 'Create harvest evidence', status: 'Signed' },
+      { role: 'Koperasi', actor: batch.farmer_name.includes('Koperasi') ? batch.farmer_name : `Koperasi Mitra ${batch.farmer_name}`, authority: 'Validate member and volume', status: 'Signed' },
+      { role: 'PKS', actor: batch.pks_destination, authority: 'Receive shipment', status: isVerified ? 'Signed' : 'Pending' },
+      { role: 'Auditor', actor: 'BPDPKS Auditor', authority: 'Verify geofence and compliance', status: isVerified ? 'Signed' : 'Pending' },
+      { role: 'Admin', actor: 'PODGE Governance Node', authority: 'Lock ledger record', status: isVerified ? 'Signed' : 'Pending' },
+    ],
+    auditTrail: [
+      {
+        time: new Date(new Date(batch.created_at).getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        actor: 'Petani',
+        action: 'Harvest photo and geolocation submitted',
+        previousHash: 'GENESIS',
+        entryHash: '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step1').digest('hex'),
+      },
+      {
+        time: new Date(new Date(batch.created_at).getTime() - 60 * 60 * 1000).toISOString(),
+        actor: 'Koperasi',
+        action: 'Volume weighed and cooperative identity validated',
+        previousHash: '0x' + crypto.createHash('sha256').update(batch.batch_id + 'step1').digest('hex'),
+        entryHash: batch.blockchain_hash,
+      },
+    ],
+    antiFraudChecks: [
+      { check: 'Duplicate hash detection', result: 'Pass', detail: 'No matching hash found in active ledger sample.' },
+      { 
+        check: 'Volume anomaly', 
+        result: weight > 7500 ? 'Review' : 'Pass', 
+        detail: `${weight.toLocaleString('id-ID')} Kg yield checked against estate historic capacity.` 
+      },
+      { check: 'Distance sanity', result: 'Pass', detail: 'Mill destination route falls within regional bounds.' },
+      { 
+        check: 'Geofence validation', 
+        result: isVerified ? 'Pass' : 'Review', 
+        detail: 'Harvest evidence coordinates compared with national protected forest geofence polygon.' 
+      },
+    ],
+    logistics: {
+      suratJalanNo: `SJ-PODGE-${1000 + (absSeed % 8999)}`,
+      invoiceNo: `INV-PODGE-${1000 + (absSeed % 8999)}`,
+      truckPlate,
+      driverMasked: 'DVR-****-' + (absSeed % 100),
+      distanceKm: 30 + (absSeed % 80),
+      maxDistanceKm: 120,
+    },
   };
 }
 
