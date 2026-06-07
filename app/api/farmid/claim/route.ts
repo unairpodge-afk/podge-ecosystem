@@ -48,6 +48,14 @@ export async function POST(request: NextRequest) {
   );
   const updatedRecord = update.rows[0];
 
+  // Sync back to podge_identities
+  await query(
+    `UPDATE podge_identities
+     SET is_claimed = true, claimed_at = NOW(), claimed_device_hash = $2, updated_at = NOW()
+     WHERE (identity_id = $1 OR linked_farm_id = $3)`,
+    [updatedRecord.identity_id, deviceHash, farmId]
+  );
+
   await appendLedgerEvent({
     entityType: 'farmid',
     entityId: farmId,

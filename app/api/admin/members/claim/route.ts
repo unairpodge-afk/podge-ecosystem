@@ -68,6 +68,31 @@ export async function POST(request: NextRequest) {
 
   const updatedIdentity = updateResult.rows[0];
 
+  // Sync to farmer_ids
+  if (updatedIdentity.linked_farm_id) {
+    if (action === 'claim') {
+      await query(
+        `UPDATE farmer_ids
+         SET is_claimed = true,
+             claimed_at = COALESCE(claimed_at, NOW()),
+             claimed_device_hash = COALESCE(claimed_device_hash, $2),
+             updated_at = NOW()
+         WHERE farm_id = $1`,
+        [updatedIdentity.linked_farm_id, hashIdentitySecret(`admin-claimed:${activeAdmin.admin_id}:${identityId}`)]
+      );
+    } else {
+      await query(
+        `UPDATE farmer_ids
+         SET is_claimed = false,
+             claimed_at = NULL,
+             claimed_device_hash = NULL,
+             updated_at = NOW()
+         WHERE farm_id = $1`,
+        [updatedIdentity.linked_farm_id]
+      );
+    }
+  }
+
   try {
     await appendLedgerEvent({
       entityType: 'identity',

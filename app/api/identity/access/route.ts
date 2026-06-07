@@ -52,6 +52,15 @@ export async function POST(request: NextRequest) {
     );
     activeIdentity = update.rows[0];
 
+    if (activeIdentity.linked_farm_id) {
+      await query(
+        `UPDATE farmer_ids
+         SET is_claimed = true, claimed_at = NOW(), claimed_device_hash = $2, updated_at = NOW()
+         WHERE farm_id = $1`,
+        [activeIdentity.linked_farm_id, deviceHash]
+      );
+    }
+
     await appendLedgerEvent({
       entityType: 'identity',
       entityId: activeIdentity.public_code,

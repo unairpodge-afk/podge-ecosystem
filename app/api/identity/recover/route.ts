@@ -80,6 +80,18 @@ export async function POST(request: NextRequest) {
     );
     const updatedIdentity = updateResult.rows[0];
 
+    if (updatedIdentity.linked_farm_id) {
+      await query(
+        `UPDATE farmer_ids
+         SET is_claimed = true,
+             claimed_at = COALESCE(claimed_at, NOW()),
+             claimed_device_hash = $2,
+             updated_at = NOW()
+         WHERE farm_id = $1`,
+        [updatedIdentity.linked_farm_id, newDeviceHash]
+      );
+    }
+
     // Set session cookie
     await setIdentitySession(updatedIdentity);
 
