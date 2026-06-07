@@ -1,5 +1,4 @@
 import { query } from '@/lib/db';
-import { revalidatePath } from 'next/cache';
 import { Coins, Leaf, Landmark, Calendar, Percent, ShieldCheck } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -30,24 +29,6 @@ export default async function GreenSukukPage() {
     console.error('Gagal mengambil data green_sukuk_projects:', e);
   }
 
-  async function addProject(formData: FormData) {
-    'use server';
-
-    const projectName = formData.get('project_name') as string;
-    const location = formData.get('location') as string;
-    const fundAllocated = Number(formData.get('fund_allocated'));
-    const carbonTarget = Number(formData.get('carbon_target'));
-    const status = formData.get('status') as string;
-
-    await query(
-      `INSERT INTO green_sukuk_projects (project_name, location, fund_allocated, carbon_target, status)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [projectName, location, fundAllocated, carbonTarget, status]
-    );
-
-    revalidatePath('/value-creation/green-sukuk');
-  }
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -64,7 +45,7 @@ export default async function GreenSukukPage() {
       {/* Industrial Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Total Dana Disalurkan', value: 'Rp 4.2 Triliun', note: '+12% Pertumbuhan Kuartal', icon: Landmark },
+          { label: 'Total Dana Disalurkan', value: 'Rp 4.2 Triliun', note: 'Alokasi Pendanaan Transparan', icon: Landmark },
           { label: 'Rata-Rata Imbal Hasil (Nisbah)', value: '7.5% per Annum', note: 'Prinsip Mudharabah / Wakalah', icon: Percent },
           { label: 'Total Carbon Credits Terbit', value: '850k Ton CO2e', note: 'Terdaftar di Registry Karbon', icon: Leaf },
         ].map((metric) => {
@@ -87,52 +68,34 @@ export default async function GreenSukukPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form Column */}
+        {/* Read-Only Blockchain Info Column */}
         <div className="lg:col-span-1">
-          <div className="glass-panel p-6 rounded-xl border border-emerald-500/10 sticky top-6">
-            <h2 className="text-lg font-semibold text-emerald-50 mb-4 flex items-center font-space">
-              <Coins size={18} className="mr-2 text-emerald-400" /> Terbitkan Sukuk Baru
-            </h2>
-            <form action={addProject} className="space-y-4">
-              <div className="flex flex-col">
-                <label className="text-xs text-emerald-200/70 mb-1 font-mono uppercase">Nama Proyek Dekarbonisasi</label>
-                <select name="project_name" className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 text-sm outline-none transition focus:border-emerald-500">
-                  <option value="Methane Capture Biogas POME">Methane Capture Biogas POME</option>
-                  <option value="Peremajaan Sawit Rakyat (Replanting)">Peremajaan Sawit Rakyat (Replanting)</option>
-                  <option value="Composting Unit & Organic Fertilizer">Composting Unit & Organic Fertilizer</option>
-                  <option value="Biomass Boiler Electrification">Biomass Boiler Electrification</option>
-                </select>
+          <div className="glass-panel p-6 rounded-xl border border-emerald-500/10 sticky top-6 space-y-5">
+            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+              <Coins size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white font-space">
+                Audit Aliran Pembiayaan Green Sukuk
+              </h2>
+              <p className="text-xs text-emerald-200/60 mt-1.5 leading-relaxed">
+                Seluruh proyek transisi energi (methane capture Biogas POME) dan replanting kelapa sawit rakyat (PSR) yang menerima dana Green Sukuk diaudit melalui blockchain ledger untuk transparansi penuh.
+              </p>
+            </div>
+            <div className="border-t border-emerald-950/80 pt-4 space-y-3 text-xs font-mono">
+              <div>
+                <span className="text-emerald-200/40 block">SMART CONTRACT ADDRESS:</span>
+                <span className="text-white block mt-0.5 break-all font-semibold">0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D</span>
               </div>
-
-              <div className="flex flex-col">
-                <label className="text-xs text-emerald-200/70 mb-1 font-mono uppercase">Lokasi Kebun / PKS (Provinsi)</label>
-                <input type="text" name="location" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 text-sm outline-none transition focus:border-emerald-500" placeholder="Misal: Riau" />
+              <div>
+                <span className="text-emerald-200/40 block">KONSENSUS REGISTRY:</span>
+                <span className="text-emerald-400 block mt-0.5 font-bold">Proof-of-Authority (PoA)</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col">
-                  <label className="text-xs text-emerald-200/70 mb-1 font-mono uppercase">Alokasi Dana (Rp)</label>
-                  <input type="number" name="fund_allocated" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 text-sm outline-none transition focus:border-emerald-500" placeholder="Misal: 15000000000" />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-xs text-emerald-200/70 mb-1 font-mono uppercase">Target CO2 (Ton/Thn)</label>
-                  <input type="number" step="0.1" name="carbon_target" required className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 text-sm outline-none transition focus:border-emerald-500" placeholder="Misal: 12500" />
-                </div>
+              <div>
+                <span className="text-emerald-200/40 block">NODE VALIDATOR UTAMA:</span>
+                <span className="text-white block mt-0.5 font-semibold">Kementerian Keuangan RI & BPDPKS Ledger Node</span>
               </div>
-
-              <div className="flex flex-col">
-                <label className="text-xs text-emerald-200/70 mb-1 font-mono uppercase">Status Pendanaan</label>
-                <select name="status" className="border border-emerald-900/70 bg-black/40 text-emerald-50 rounded-md p-2 text-sm outline-none transition focus:border-emerald-500">
-                  <option value="Perencanaan">Masa Penawaran (Bookbuilding)</option>
-                  <option value="Berjalan">Konstruksi / Berjalan (Active)</option>
-                  <option value="Selesai">Terdanai Penuh (Completed)</option>
-                </select>
-              </div>
-
-              <button type="submit" className="w-full bg-emerald-500 text-black font-bold py-2.5 px-4 rounded-md hover:bg-emerald-400 transition-colors text-sm mt-2 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-                Terbitkan Instrumen Sukuk
-              </button>
-            </form>
+            </div>
           </div>
         </div>
 
@@ -140,7 +103,7 @@ export default async function GreenSukukPage() {
         <div className="lg:col-span-2 space-y-4">
           <h3 className="text-base font-bold text-white font-space flex items-center gap-2">
             <ShieldCheck size={18} className="text-emerald-400" />
-            Daftar Portofolio Investasi Syariah Hijau
+            Daftar Portofolio Pembiayaan Syariah Hijau (Ledger Data)
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -178,7 +141,7 @@ export default async function GreenSukukPage() {
                       </span>
                     </div>
                     <h4 className="text-base font-extrabold text-white mt-2 font-space leading-snug">{project.project_name}</h4>
-                    <p className="text-xs text-emerald-200/50">Lokasi: Provinsi {project.location}</p>
+                    <p className="text-xs text-emerald-200/55">Lokasi: Provinsi {project.location}</p>
                   </div>
 
                   {/* Financials & Carbon */}

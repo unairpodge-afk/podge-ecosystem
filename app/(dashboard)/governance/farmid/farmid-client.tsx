@@ -606,14 +606,20 @@ export default function FarmIdClient({
       ctx.fillText('NOMOR REGISTRASI STDB', 650, 325);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText(record?.verification_status === 'verified' ? 'STDB-RIAU-2026-070' : 'PENDING AUDIT', 650, 350);
+      const stdbNo = record?.verification_status === 'verified'
+        ? (record.province?.toLowerCase().includes('kalimantan') ? 'STDB-KALTENG-2026-092' : 'STDB-RIAU-2026-070')
+        : 'STDB-PENDING-TEMP';
+      ctx.fillText(stdbNo, 650, 350);
 
       ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
       ctx.font = 'bold 12px monospace';
       ctx.fillText('INTENSITAS EMISI TBS', 650, 375);
       ctx.fillStyle = '#10b981';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText(record?.verification_status === 'verified' ? '114 kg CO2e / Ton FFB' : 'PENDING AUDIT', 650, 400);
+      const carbonFootprint = record?.verification_status === 'verified'
+        ? '114 kg CO2e / Ton FFB'
+        : 'ESTIMASI: 118 kg CO2e / Ton';
+      ctx.fillText(carbonFootprint, 650, 400);
 
       // 4. Footer Line
       ctx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
