@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import TokenManager from './token-manager';
+import DownstreamViewer from './downstream-viewer';
 import {
   Fingerprint,
   Layers,
@@ -546,6 +547,11 @@ export default async function DashboardPage() {
               </Link>
             </div>
           </div>
+
+          {/* Downstream supply chain visualization for PKS */}
+          <div className="border-t border-blue-950/40 pt-6">
+            <DownstreamViewer />
+          </div>
         </div>
       )}
 
@@ -622,6 +628,11 @@ export default async function DashboardPage() {
                 </div>
               </Link>
             </div>
+          </div>
+
+          {/* Downstream supply chain visualization for Investor */}
+          <div className="border-t border-amber-950/40 pt-6">
+            <DownstreamViewer />
           </div>
         </div>
       )}
