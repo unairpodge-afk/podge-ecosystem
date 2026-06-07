@@ -120,6 +120,12 @@ export default function IdentityAccessClient() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
 
+  // Phone binding states
+  const [needsPhone, setNeedsPhone] = useState(false);
+  const [isClaimed, setIsClaimed] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [verificationSecret, setVerificationSecret] = useState('');
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => setDeviceKey(getDeviceKey()));
     return () => cancelAnimationFrame(frame);
@@ -139,7 +145,7 @@ export default function IdentityAccessClient() {
     setResult(data);
   }, [deviceKey, publicCode, token]);
 
-  const requestOtp = useCallback(async (activePublicCode = publicCode) => {
+  const requestOtp = useCallback(async (activePublicCode = publicCode, overridePhone = '', overrideSecret = '') => {
     if (!activePublicCode) {
       setQrError('Silakan masukkan Farm ID / Public Code terlebih dahulu.');
       return;
@@ -153,13 +159,26 @@ export default function IdentityAccessClient() {
       const response = await fetch('/api/identity/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicCode: activePublicCode }),
+        body: JSON.stringify({
+          publicCode: activePublicCode,
+          phoneNumber: overridePhone || undefined,
+          verificationSecret: overrideSecret || undefined
+        }),
       });
       const data = await response.json();
       if (!response.ok) {
         setOtpError(data.error || 'Gagal mengirimkan kode OTP.');
         return;
       }
+
+      if (data.needsPhoneNumber) {
+        setNeedsPhone(true);
+        setIsClaimed(!!data.isClaimed);
+        setOtpSuccess(data.message || 'Silakan masukkan nomor WhatsApp Anda.');
+        return;
+      }
+
+      setNeedsPhone(false);
       setOtpSent(true);
       setMaskedPhone(data.maskedPhone || 'nomor HP Anda');
       if (data.devOtp) {
@@ -184,7 +203,7 @@ export default function IdentityAccessClient() {
       const response = await fetch('/api/identity/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicCode, otpCode, deviceKey }),
+        body: JSON.stringify({ publicCode, otpCode, deviceKey, phoneNumber: newPhone || undefined }),
       });
       const data = await response.json() as AccessResult;
       setLoading(false);
@@ -193,12 +212,15 @@ export default function IdentityAccessClient() {
         setOtpError(data.error || 'Verifikasi OTP gagal.');
       } else {
         setOtpSuccess('Login via OTP berhasil!');
+        setNeedsPhone(false);
+        setNewPhone('');
+        setVerificationSecret('');
       }
     } catch {
       setLoading(false);
       setOtpError('Terjadi kesalahan jaringan saat memproses verifikasi OTP.');
     }
-  }, [publicCode, otpCode, deviceKey]);
+  }, [publicCode, otpCode, deviceKey, newPhone]);
 
   const handleQrUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -434,79 +456,166 @@ export default function IdentityAccessClient() {
                   )}
 
                   {!otpSent ? (
-                    <div className="space-y-4">
-                      {/* File Upload zone */}
-                      <div className="p-5 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-950/20 text-center relative transition duration-300 hover:border-emerald-500/40 hover:bg-emerald-950/35">
-                        <label className="cursor-pointer block">
-                          <div className="flex flex-col items-center justify-center space-y-2.5">
-                            {qrScanning || otpLoading ? (
-                              <Loader2 className="text-emerald-400 animate-spin" size={32} />
-                            ) : (
-                              <UploadCloud className="text-emerald-400" size={32} />
-                            )}
-                            <span className="text-xs font-bold text-emerald-100">
-                              {qrScanning ? 'Membaca Kartu...' : otpLoading ? 'Meminta OTP...' : 'Unggah Barcode Kartu Anggota'}
-                            </span>
-                            <span className="text-[10px] text-emerald-400/50 leading-relaxed max-w-[280px] mx-auto">
-                              Pilih screenshot / foto Barcode publik dari Kartu Anggota Digital Anda.
-                            </span>
+                    needsPhone ? (
+                      <div className="space-y-5">
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-950/25 p-4 text-xs text-yellow-200 text-left">
+                          <p className="font-semibold text-yellow-400 flex items-center gap-1.5 font-space">
+                            <AlertCircle size={15} /> Hubungkan WhatsApp
+                          </p>
+                          <p className="mt-1 leading-relaxed text-yellow-200/75">
+                            Akun PODGE-ID <strong className="text-white font-mono">{publicCode}</strong> belum terhubung ke WhatsApp. Hubungkan nomor WhatsApp aktif Anda untuk menerima kode OTP masuk.
+                          </p>
+                        </div>
+
+                        {isClaimed && (
+                          <div className="rounded-lg border border-red-500/35 bg-red-950/35 p-4 text-xs text-red-200 text-left space-y-1.5">
+                            <p className="font-semibold text-red-400 flex items-center gap-1.5 font-space">
+                              <ShieldAlert size={15} /> Akun Sudah Diklaim
+                            </p>
+                            <p className="leading-relaxed text-red-200/75">
+                              Karena kartu ini sudah diklaim di perangkat lain, Anda wajib memasukkan <strong>Token Pribadi (Private Token)</strong> atau <strong>Recovery Code</strong> sebagai bukti kepemilikan untuk menghubungkan nomor WhatsApp.
+                            </p>
                           </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleQrUpload}
-                            disabled={qrScanning || otpLoading}
-                            className="hidden"
-                          />
-                        </label>
+                        )}
+
+                        <form onSubmit={(e) => { e.preventDefault(); void requestOtp(publicCode, newPhone, verificationSecret); }} className="space-y-4">
+                          <label className="block text-left">
+                            <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold flex items-center gap-1.5">
+                              <MessageSquare size={13} /> Nomor WhatsApp Baru
+                            </span>
+                            <input
+                              type="tel"
+                              value={newPhone}
+                              onChange={(event) => setNewPhone(event.target.value)}
+                              required
+                              placeholder="Contoh: 081234567890"
+                              className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                            />
+                          </label>
+
+                          {isClaimed && (
+                            <label className="block text-left">
+                              <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-yellow-400 font-semibold flex items-center gap-1.5">
+                                <KeyRound size={13} /> Bukti Kepemilikan (Private Token / Recovery Code)
+                              </span>
+                              <input
+                                type="password"
+                                value={verificationSecret}
+                                onChange={(event) => setVerificationSecret(event.target.value)}
+                                required
+                                placeholder="Masukkan token rahasia atau recovery code"
+                                className="w-full rounded-xl border border-yellow-900/50 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30"
+                              />
+                            </label>
+                          )}
+
+                          <div className="flex gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNeedsPhone(false);
+                                setNewPhone('');
+                                setVerificationSecret('');
+                                setOtpError(null);
+                                setOtpSuccess(null);
+                              }}
+                              className="flex-1 rounded-xl border border-emerald-900/70 hover:border-emerald-700 text-emerald-400 hover:text-emerald-300 py-3 text-xs font-bold transition text-center"
+                            >
+                              Batal
+                            </button>
+
+                            <button
+                              type="submit"
+                              disabled={otpLoading || !newPhone || (isClaimed && !verificationSecret)}
+                              className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-emerald-400 disabled:opacity-50"
+                            >
+                              {otpLoading ? (
+                                <>
+                                  <Loader2 className="animate-spin" size={14} />
+                                  Mengirim...
+                                </>
+                              ) : (
+                                'Kirim OTP Binding'
+                              )}
+                            </button>
+                          </div>
+                        </form>
                       </div>
-
-                      {qrMessage && (
-                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-300 text-center animate-pulse">
-                          {qrMessage}
+                    ) : (
+                      <div className="space-y-4">
+                        {/* File Upload zone */}
+                        <div className="p-5 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-950/20 text-center relative transition duration-300 hover:border-emerald-500/40 hover:bg-emerald-950/35">
+                          <label className="cursor-pointer block">
+                            <div className="flex flex-col items-center justify-center space-y-2.5">
+                              {qrScanning || otpLoading ? (
+                                <Loader2 className="text-emerald-400 animate-spin" size={32} />
+                              ) : (
+                                <UploadCloud className="text-emerald-400" size={32} />
+                              )}
+                              <span className="text-xs font-bold text-emerald-100">
+                                {qrScanning ? 'Membaca Kartu...' : otpLoading ? 'Meminta OTP...' : 'Unggah Barcode Kartu Anggota'}
+                              </span>
+                              <span className="text-[10px] text-emerald-400/50 leading-relaxed max-w-[280px] mx-auto">
+                                Pilih screenshot / foto Barcode publik dari Kartu Anggota Digital Anda.
+                              </span>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleQrUpload}
+                              disabled={qrScanning || otpLoading}
+                              className="hidden"
+                            />
+                          </label>
                         </div>
-                      )}
 
-                      {qrError && (
-                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-950/20 p-3 text-xs text-yellow-200 text-center">
-                          {qrError}
+                        {qrMessage && (
+                          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-300 text-center animate-pulse">
+                            {qrMessage}
+                          </div>
+                        )}
+
+                        {qrError && (
+                          <div className="rounded-lg border border-yellow-500/20 bg-yellow-950/20 p-3 text-xs text-yellow-200 text-center">
+                            {qrError}
+                          </div>
+                        )}
+
+                        <div className="relative flex py-2 items-center">
+                          <div className="flex-grow border-t border-emerald-950/60"></div>
+                          <span className="flex-shrink mx-4 text-[10px] font-mono text-emerald-400/40 uppercase">Atau Masukkan Manual</span>
+                          <div className="flex-grow border-t border-emerald-950/60"></div>
                         </div>
-                      )}
 
-                      <div className="relative flex py-2 items-center">
-                        <div className="flex-grow border-t border-emerald-950/60"></div>
-                        <span className="flex-shrink mx-4 text-[10px] font-mono text-emerald-400/40 uppercase">Atau Masukkan Manual</span>
-                        <div className="flex-grow border-t border-emerald-950/60"></div>
+                        {/* Manual public code entry to trigger OTP */}
+                        <form onSubmit={(e) => { e.preventDefault(); void requestOtp(); }} className="space-y-4">
+                          <label className="block text-left">
+                            <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Farm ID / Public Code</span>
+                            <input
+                              value={publicCode}
+                              onChange={(event) => setPublicCode(event.target.value.toUpperCase())}
+                              required
+                              className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                              placeholder="PODGE-FARM-2026-XXXXXXXX"
+                            />
+                          </label>
+
+                          <button
+                            type="submit"
+                            disabled={otpLoading || !publicCode}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-emerald-400 disabled:opacity-50"
+                          >
+                            {otpLoading ? 'Mengirim OTP...' : 'Kirim OTP Akses'}
+                          </button>
+                        </form>
                       </div>
-
-                      {/* Manual public code entry to trigger OTP */}
-                      <form onSubmit={(e) => { e.preventDefault(); void requestOtp(); }} className="space-y-4">
-                        <label className="block text-left">
-                          <span className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Farm ID / Public Code</span>
-                          <input
-                            value={publicCode}
-                            onChange={(event) => setPublicCode(event.target.value.toUpperCase())}
-                            required
-                            className="w-full rounded-xl border border-emerald-900/70 bg-black/40 p-3 font-mono text-sm text-emerald-50 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
-                            placeholder="PODGE-FARM-2026-XXXXXXXX"
-                          />
-                        </label>
-
-                        <button
-                          type="submit"
-                          disabled={otpLoading || !publicCode}
-                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-emerald-400 disabled:opacity-50"
-                        >
-                          {otpLoading ? 'Mengirim OTP...' : 'Kirim OTP Akses'}
-                        </button>
-                      </form>
-                    </div>
+                    )
                   ) : (
                     <form onSubmit={verifyOtp} className="space-y-5">
                       <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/35 p-4 text-xs text-emerald-200 text-left">
                         <p className="font-semibold text-emerald-400">Kode Akses Terkirim</p>
                         <p className="mt-1 leading-relaxed text-emerald-200/70">
-                          Kode OTP rahasia telah dikirim ke nomor WhatsApp / Telegram Anda di nomor: <strong className="text-white">{maskedPhone}</strong>
+                          Kode OTP rahasia telah dikirim ke nomor WhatsApp Anda di nomor: <strong className="text-white">{maskedPhone}</strong>
                         </p>
                       </div>
 
@@ -532,7 +641,7 @@ export default function IdentityAccessClient() {
 
                       <button
                         type="button"
-                        onClick={() => void requestOtp()}
+                        onClick={() => void requestOtp(publicCode, newPhone, verificationSecret)}
                         className="w-full text-center text-xs font-semibold text-emerald-400/70 hover:text-emerald-300 transition"
                       >
                         Tidak terima kode? Kirim ulang OTP

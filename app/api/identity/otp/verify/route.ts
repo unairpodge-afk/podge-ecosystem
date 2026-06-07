@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     const publicCode = typeof body.publicCode === 'string' ? body.publicCode.trim().toUpperCase() : '';
     const otpCode = typeof body.otpCode === 'string' ? body.otpCode.trim() : '';
     const deviceKey = typeof body.deviceKey === 'string' ? body.deviceKey.trim() : '';
+    const phoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : '';
 
     if (!publicCode || !otpCode || !deviceKey) {
       return NextResponse.json({ error: 'Farm ID, Kode OTP, dan device key wajib diisi.' }, { status: 400 });
@@ -63,14 +64,26 @@ export async function POST(request: NextRequest) {
     const deviceHash = hashIdentitySecret(deviceKey);
     let activeIdentity = identity;
 
+    // Simpan nomor HP jika disediakan (binding nomor baru)
+    if (phoneNumber) {
+      const updatePhone = await query<PodgeIdentityRecord>(
+        `UPDATE podge_identities
+         SET phone_number = $2, updated_at = NOW()
+         WHERE identity_id = $1
+         RETURNING *`,
+        [identity.identity_id, phoneNumber]
+      );
+      activeIdentity = updatePhone.rows[0] || identity;
+    }
+
     // Klaim / update device hash
-    if (!identity.is_claimed) {
+    if (!activeIdentity.is_claimed) {
       const update = await query<PodgeIdentityRecord>(
         `UPDATE podge_identities
          SET is_claimed = true, claimed_at = NOW(), claimed_device_hash = $2, updated_at = NOW()
          WHERE identity_id = $1
          RETURNING *`,
-        [identity.identity_id, deviceHash]
+        [activeIdentity.identity_id, deviceHash]
       );
       activeIdentity = update.rows[0];
 
@@ -86,14 +99,14 @@ export async function POST(request: NextRequest) {
           verification_method: 'otp'
         },
       });
-    } else if (identity.claimed_device_hash !== deviceHash) {
+    } else if (activeIdentity.claimed_device_hash !== deviceHash) {
       // Pindahkan device secara otomatis jika terverifikasi OTP
       const update = await query<PodgeIdentityRecord>(
         `UPDATE podge_identities
          SET claimed_device_hash = $2, updated_at = NOW()
          WHERE identity_id = $1
          RETURNING *`,
-        [identity.identity_id, deviceHash]
+        [activeIdentity.identity_id, deviceHash]
       );
       activeIdentity = update.rows[0];
 

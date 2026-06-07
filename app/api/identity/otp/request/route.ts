@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { ensurePodgeIdentitiesTable, type PodgeIdentityRecord } from '@/lib/identity';
+import { ensurePodgeIdentitiesTable, hashIdentitySecret, type PodgeIdentityRecord } from '@/lib/identity';
 
 function maskPhoneNumber(phone: string) {
   if (!phone) return '';
@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const publicCode = typeof body.publicCode === 'string' ? body.publicCode.trim().toUpperCase() : '';
+    const newPhoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : '';
+    const verificationSecret = typeof body.verificationSecret === 'string' ? body.verificationSecret.trim() : '';
 
     if (!publicCode) {
       return NextResponse.json({ error: 'Farm ID / Public Code wajib diisi.' }, { status: 400 });
@@ -37,11 +39,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Akun PODGE-ID ini sudah tidak aktif atau dicabut.' }, { status: 403 });
     }
 
-    const phoneNumber = identity.phone_number;
+    let phoneNumber = identity.phone_number;
+    
     if (!phoneNumber) {
-      return NextResponse.json({
-        error: 'Akun ini belum mendaftarkan nomor HP / WhatsApp. Silakan hubungi Super Admin untuk menambahkan nomor HP.'
-      }, { status: 400 });
+      // Jika nomor HP belum ada di database, minta nomor baru
+      if (!newPhoneNumber) {
+        return NextResponse.json({
+          needsPhoneNumber: true,
+          isClaimed: identity.is_claimed,
+          message: 'Akun Anda belum terhubung dengan nomor WhatsApp. Silakan hubungkan nomor WhatsApp Anda.'
+        });
+      }
+
+      // Jika akun sudah pernah diklaim sebelumnya, wajib masukkan token/recovery code sebagai bukti
+      if (identity.is_claimed) {
+        if (!verificationSecret) {
+          return NextResponse.json({
+            error: 'Akun ini sudah diklaim di perangkat lain. Masukkan Token Pribadi atau Recovery Code Anda sebagai bukti kepemilikan untuk menghubungkan nomor WhatsApp.'
+          }, { status: 401 });
+        }
+
+        const secretHash = hashIdentitySecret(verificationSecret);
+        const isValid = secretHash === identity.private_token_hash || secretHash === identity.recovery_code_hash;
+
+        if (!isValid) {
+          return NextResponse.json({
+            error: 'Bukti kepemilikan (Token atau Recovery Code) tidak cocok.'
+          }, { status: 403 });
+        }
+      }
+
+      phoneNumber = newPhoneNumber;
     }
 
     // Generate 6-digit OTP
@@ -54,23 +82,23 @@ export async function POST(request: NextRequest) {
       [identity.identity_id, otpCode]
     );
 
-    // Kirim pesan tiruan ke WhatsApp / Telegram (Log Konsol)
+    // Kirim pesan tiruan ke WhatsApp (Log Konsol)
     console.log(`
 ============================================================
-[MOCK SMS/WHATSAPP GATEWAY]
-Tujuan: ${phoneNumber}
+[MOCK WHATSAPP GATEWAY]
+Tujuan WA: ${phoneNumber}
 Penerima: ${identity.display_name}
-Pesan: Kode OTP login PODGE Sawit Anda adalah [ ${otpCode} ]. 
+Pesan WA: Kode OTP login PODGE Sawit Anda adalah [ ${otpCode} ]. 
 Kode ini rahasia dan berlaku selama 10 menit.
 ============================================================
     `);
 
     return NextResponse.json({
       success: true,
-      maskedPhone: maskPhoneNumber(phoneNumber),
+      maskedPhone: maskPhoneNumber(phoneNumber || ''),
       // Sertakan OTP di response untuk mempermudah testing lokal
       devOtp: otpCode,
-      message: 'Kode akses OTP berhasil dikirim ke nomor HP / WhatsApp terdaftar.'
+      message: 'Kode akses OTP berhasil dikirim ke nomor WhatsApp Anda.'
     });
 
   } catch (error) {
