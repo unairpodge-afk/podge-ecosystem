@@ -20,7 +20,9 @@ import {
   ArrowRight,
   User,
   Info as InfoIcon,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Building
 } from 'lucide-react';
 import type { PublicPodgeIdentityRecord } from '@/lib/identity';
 
@@ -120,6 +122,7 @@ export default function FarmIdClient() {
   const [photoUrl, setPhotoUrl] = useState<string>('');
 
   const isClaimMode = queryMode === 'claim' && privateToken;
+  const isViewMode = queryMode === 'view';
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -218,7 +221,6 @@ export default function FarmIdClient() {
       setHarvestStatus(data.record.harvest_status);
       setPublicNote(data.record.public_note || '');
       
-      // Auto save photo if there is one already in state
       if (photoUrl) {
         localStorage.setItem(`podge:farmid:photo:${data.record.farm_id}`, photoUrl);
       }
@@ -321,6 +323,164 @@ export default function FarmIdClient() {
     setStatus('Link verifikasi berhasil disalin.');
   }
 
+  // HTML5 Canvas Exporter to Download as JPG
+  const downloadCardAsJpg = () => {
+    if (!record) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 1. Background Gradient (emerald/black)
+    const grad = ctx.createLinearGradient(0, 0, 1000, 600);
+    grad.addColorStop(0, '#06150d');
+    grad.addColorStop(0.5, '#020704');
+    grad.addColorStop(1, '#0c2415');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1000, 600);
+
+    // Decorative borders
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, 980, 580);
+    
+    // Top colored bar
+    const barGrad = ctx.createLinearGradient(0, 0, 1000, 0);
+    barGrad.addColorStop(0, '#10b981');
+    barGrad.addColorStop(0.5, '#34d399');
+    barGrad.addColorStop(1, '#059669');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(10, 10, 980, 12);
+
+    // Draw header text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText('PODGE SAWIT INDONESIA', 50, 65);
+    
+    ctx.fillStyle = '#10b981';
+    ctx.font = '14px monospace';
+    ctx.fillText('Digital Farmer Identity Card (KTP-Petani)', 50, 90);
+
+    // Badge Petani Mandiri
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+    ctx.fillRect(730, 45, 210, 40);
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+    ctx.strokeRect(730, 45, 210, 40);
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PETANI MANDIRI', 835, 70);
+    ctx.textAlign = 'left';
+
+    // 2. Photo Spot
+    if (photoUrl) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 50, 140, 220, 250);
+        drawTextAndQR();
+      };
+      img.src = photoUrl;
+    } else {
+      // Placeholder photo box
+      ctx.fillStyle = '#030d07';
+      ctx.fillRect(50, 140, 220, 250);
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.strokeRect(50, 140, 220, 250);
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('TANPA FOTO', 110, 260);
+      drawTextAndQR();
+    }
+
+    function drawTextAndQR() {
+      if (!ctx) return;
+      // 3. Info labels and text
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('NAMA LENGKAP PETANI', 310, 160);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText((record?.farmer_name || '').toUpperCase(), 310, 195);
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('KOPERASI MITRA', 310, 245);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText((record?.cooperative_name || '').toUpperCase(), 310, 275);
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('LUAS LAHAN KEBUN', 650, 245);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`${record?.area_hectare} Hektar`, 650, 275);
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('ALAMAT LAHAN KEBUN', 310, 325);
+      ctx.fillStyle = '#e4ece7';
+      ctx.font = '14px sans-serif';
+      ctx.fillText(`Desa ${record?.village}, Kec. ${record?.district}, ${record?.province}`, 310, 355);
+
+      // 4. Footer Line
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
+      ctx.beginPath();
+      ctx.moveTo(50, 420);
+      ctx.lineTo(950, 420);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('KODE PODGE-ID / FARM-ID', 50, 450);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText(record?.farm_id || '', 50, 485);
+
+      // Affiliations
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.7)';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Dicetak oleh: PODGE & Badan Pengelola Dana Perkebunan (BPDP)', 50, 535);
+
+      // QR Code drawing
+      const qrImg = new Image();
+      qrImg.crossOrigin = 'anonymous';
+      qrImg.onload = () => {
+        try {
+          ctx.drawImage(qrImg, 780, 440, 130, 130);
+        } catch (e) {
+          // Fallback if CORS block drawing
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(780, 440, 130, 130);
+          ctx.fillStyle = '#000000';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText('[QR CODE]', 815, 510);
+        }
+        triggerDownload();
+      };
+      qrImg.onerror = () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(780, 440, 130, 130);
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText('[QR CODE]', 815, 510);
+        triggerDownload();
+      };
+      qrImg.src = qrUrl(publicLink);
+
+      function triggerDownload() {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        link.download = `KARTU_PETANI_${record?.farm_id}.jpg`;
+        link.href = dataUrl;
+        link.click();
+      }
+    }
+  };
+
   // Derive Display values for card (handles both live preview and loaded records)
   const cardFarmerName = record ? record.farmer_name : (formFarmerName || 'NAMA PETANI');
   const cardCooperativeName = record ? record.cooperative_name : (formCooperativeName || 'NAMA KOPERASI MITRA');
@@ -330,18 +490,263 @@ export default function FarmIdClient() {
   const cardProvince = record ? record.province : (formProvince || 'Provinsi');
   const cardFarmId = record ? record.farm_id : 'PODGE-ID-FARM-XXXX';
 
+  // --- RENDERING DEDICATED VIEW MODE (TAB BARU - HANYA KARTU DIGITAL FINAL) ---
+  if (isViewMode) {
+    return (
+      <div className="min-h-screen bg-[#040806] text-emerald-50 py-12 px-4 flex flex-col items-center justify-center space-y-6">
+        
+        {/* Style injection to center and isolate card during physical printing */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            body {
+              background: #000 !important;
+              color: #fff !important;
+            }
+            .no-print {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            #printable-farmer-card-section {
+              position: absolute !important;
+              left: 50% !important;
+              top: 50% !important;
+              transform: translate(-50%, -50%) !important;
+              width: 100% !important;
+              max-width: 500px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `}} />
+
+        <div className="text-center no-print">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+            <Building size={14} />
+            Verifikasi Identitas Petani (BPDP & PODGE)
+          </div>
+          <h1 className="mt-3 font-space text-2xl font-extrabold text-white">Kartu Identitas Petani Digital</h1>
+          <p className="text-xs text-emerald-300/60 mt-1">Halaman verifikasi kredensial legalitas kebun sawit mandiri.</p>
+        </div>
+
+        {/* KYC Verification status alert box (Auditor/BPDP status) */}
+        {record && (
+          <div className="w-full max-w-[500px] no-print">
+            {record.verification_status === 'verified' ? (
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/40 p-4 text-xs text-emerald-200 flex items-start gap-2.5">
+                <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-emerald-400">VERIFIKASI KYC LOLOS / VALID</p>
+                  <p className="mt-0.5 text-emerald-300/70">
+                    Kartu identitas ini telah sah diverifikasi oleh verifikator BPDPKS & PODGE. Luas kebun, koperasi mitra, dan koordinat wilayah dinyatakan valid.
+                  </p>
+                  {record.verification_note && (
+                    <p className="mt-2 font-mono text-[10px] text-emerald-400/80 bg-black/30 p-2 rounded">
+                      Catatan Audit: {record.verification_note}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : record.verification_status === 'rejected' ? (
+              <div className="rounded-xl border border-red-500/25 bg-red-950/20 p-4 text-xs text-red-200 flex items-start gap-2.5">
+                <ShieldAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-red-400">VERIFIKASI KYC DITOLAK</p>
+                  <p className="mt-0.5 text-red-300/70">
+                    Ditemukan ketidakcocokan data. Hubungi admin koperasi verifikator untuk memperbaiki info lahan.
+                  </p>
+                  {record.verification_note && (
+                    <p className="mt-2 font-mono text-[10px] text-red-400/80 bg-black/30 p-2 rounded">
+                      Alasan Penolakan: {record.verification_note}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs text-yellow-200 flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
+                <div>
+                  <p className="font-bold text-yellow-400">PROSES KYC (MENUNGGU VERIFIKASI)</p>
+                  <p className="mt-0.5 text-yellow-300/70">
+                    Kartu digital telah diterbitkan oleh petani namun masih menunggu verifikasi dokumen fisik oleh Auditor BPDPKS & PODGE.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PRINTABLE CARD AREA */}
+        <div id="printable-farmer-card-section" className="w-full">
+          {record ? (
+            <div className="w-full max-w-[500px] mx-auto bg-gradient-to-br from-[#06150d] via-[#020704] to-[#0c2415] border-2 border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden font-space">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600"></div>
+              <div className="absolute bottom-3 right-4 text-[9px] font-mono text-emerald-500/25 tracking-widest font-semibold">SECURE DIGITAL CARD</div>
+
+              {/* Card Header */}
+              <div className="flex justify-between items-start pb-4 border-b border-emerald-950/80">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-emerald-500 rounded-lg flex items-center justify-center font-bold text-black text-base shadow-[0_0_12px_rgba(16,185,129,0.4)]">
+                    P
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-white tracking-wider uppercase leading-none">PODGE SAWIT</h4>
+                    <span className="text-[8px] font-mono text-emerald-400 tracking-widest uppercase">Ecosystem Identity</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-800/40 px-2.5 py-0.5 rounded-md uppercase">
+                    PETANI MANDIRI
+                  </span>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-[115px_1fr] gap-5 items-start">
+                <div className="flex flex-col items-center mx-auto sm:mx-0">
+                  <div className="relative h-32 w-28 bg-black/40 border border-emerald-500/25 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
+                    {photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoUrl} alt="Foto Petani" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="text-center p-3 text-emerald-500/35">
+                        <User size={40} className="mx-auto mb-1.5 opacity-60" />
+                        <span className="text-[8px] font-mono tracking-wider font-semibold">UNGGAH FOTO</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3.5 text-xs text-left">
+                  <div>
+                    <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">NAMA LENGKAP PETANI</span>
+                    <span className="text-base font-extrabold text-white uppercase mt-0.5 block truncate leading-none">{cardFarmerName}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">KOPERASI MITRA</span>
+                      <span className="font-bold text-emerald-100 uppercase block truncate">{cardCooperativeName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">LUAS LAHAN</span>
+                      <span className="font-bold text-emerald-100 block truncate">{cardAreaHectare} Hektar</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">ALAMAT LAHAN KEBUN</span>
+                    <span className="text-emerald-100/90 block leading-tight font-medium">
+                      Desa {cardVillage}, Kec. {cardDistrict}, {cardProvince}
+                    </span>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-emerald-950/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">KODE PODGE-ID / FARM-ID</span>
+                      <span className="font-mono text-xs font-extrabold text-white tracking-widest uppercase block mt-0.5">{cardFarmId}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Footer with Single Verification Barcode & Affiliations */}
+              <div className="mt-6 pt-4 border-t border-emerald-950/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left text-[9px] text-emerald-400/50 font-mono leading-relaxed max-w-[280px] space-y-1">
+                  <p>Scan barcode publik ini untuk memeriksa koordinat kebun, berat kiriman TBS, dan status verifikasi hukum secara publik.</p>
+                  <p className="text-[8px] text-emerald-300 font-sans mt-1">Dicetak oleh: PODGE & Badan Pengelola Dana Perkebunan (BPDP)</p>
+                </div>
+                
+                <div className="bg-white p-2 rounded-xl border border-emerald-500/20 shrink-0 shadow-lg text-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrUrl(publicLink)} alt="Public QR Code" className="h-24 w-24 mx-auto" />
+                  <span className="text-[7px] font-mono text-black font-bold tracking-widest block mt-1 uppercase">VERIFIED LAHAN</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-emerald-900/60 bg-black/25 p-8 text-center text-sm text-emerald-200/50 max-w-[500px] mx-auto">
+              Memuat Kartu Identitas Digital Petani...
+            </div>
+          )}
+        </div>
+
+        {/* View mode actions */}
+        {record && (
+          <div className="w-full max-w-[500px] flex flex-wrap gap-3 items-center justify-center bg-black/30 p-4 rounded-2xl border border-emerald-950/80 no-print">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition shadow-md"
+            >
+              <Printer size={15} />
+              <span>Cetak Kartu (PDF)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={downloadCardAsJpg}
+              className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+            >
+              <FileText size={15} />
+              <span>Unduh Kartu (JPG)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyText(publicLink)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+              title="Salin Link Kartu"
+            >
+              <Copy size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- RENDERING FULL BUILD/EDIT MODE (FOR FARMER LOGGED IN INTERFACE) ---
   return (
     <div className="space-y-8">
+      
+      {/* Dynamic media print styles */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body {
+            background: #000 !important;
+            color: #fff !important;
+          }
+          header, footer, nav, aside, button, label, input, form, select, textarea, .glass-panel:not(#printable-farmer-card-section) {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          #printable-farmer-card-section {
+            width: 100% !important;
+            max-width: 500px !important;
+            position: absolute !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+        }
+      `}} />
+
       {/* Page Header */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
             <Fingerprint size={14} />
-            Kartu Identitas Petani Digital
+            FarmID Key Claiming
           </div>
           <h1 className="mt-3 text-3xl font-extrabold text-emerald-50 font-space">Sertifikasi & KTP Digital Petani</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
-            Membantu Bapak/Ibu petani sawit memiliki kartu identitas digital yang memuat data lokasi lahan, koperasi mitra, dan QR code pelacakan TBS legal berkelanjutan.
+            Dapatkan satu Kartu Identitas Digital Petani yang didukung oleh BPDP dan terverifikasi KYC.
           </p>
         </div>
         <Link
@@ -478,17 +883,15 @@ export default function FarmIdClient() {
         {/* Right Column: Interactive Digital Farmer ID Card Display */}
         <section className="flex flex-col items-center justify-center space-y-6">
           
-          {/* Print container styling */}
           <div id="printable-farmer-card-section" className="w-full">
             
             {/* STYLISH ID CARD */}
             <div className="w-full max-w-[500px] mx-auto bg-gradient-to-br from-[#06150d] via-[#020704] to-[#0c2415] border-2 border-emerald-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden font-space transition-all duration-300 hover:border-emerald-500/50">
               
-              {/* Cyber decoration lines */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600"></div>
               <div className="absolute bottom-3 right-4 text-[9px] font-mono text-emerald-500/25 tracking-widest font-semibold">SECURE DIGITAL CARD</div>
 
-              {/* Header */}
+              {/* Card Header */}
               <div className="flex justify-between items-start pb-4 border-b border-emerald-950/80">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 bg-emerald-500 rounded-lg flex items-center justify-center font-bold text-black text-base shadow-[0_0_12px_rgba(16,185,129,0.4)]">
@@ -508,8 +911,6 @@ export default function FarmIdClient() {
 
               {/* Card Body */}
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-[115px_1fr] gap-5 items-start">
-                
-                {/* Photo Section */}
                 <div className="flex flex-col items-center mx-auto sm:mx-0">
                   <div className="relative h-32 w-28 bg-black/40 border border-emerald-500/25 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
                     {photoUrl ? (
@@ -524,7 +925,6 @@ export default function FarmIdClient() {
                   </div>
                 </div>
 
-                {/* Farmer Information */}
                 <div className="space-y-3.5 text-xs text-left">
                   <div>
                     <span className="text-[8px] font-mono text-emerald-400/40 uppercase tracking-widest block font-semibold">NAMA LENGKAP PETANI</span>
@@ -558,10 +958,11 @@ export default function FarmIdClient() {
                 </div>
               </div>
 
-              {/* Card Footer with Single Verification Barcode */}
+              {/* Card Footer with Single Verification Barcode & Affiliations */}
               <div className="mt-6 pt-4 border-t border-emerald-950/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-center sm:text-left text-[9px] text-emerald-400/50 font-mono leading-relaxed max-w-[280px]">
+                <div className="text-center sm:text-left text-[9px] text-emerald-400/50 font-mono leading-relaxed max-w-[280px] space-y-1">
                   <p>Scan barcode publik ini untuk memeriksa koordinat kebun, berat kiriman TBS, dan status verifikasi hukum secara publik.</p>
+                  <p className="text-[8px] text-emerald-300 font-sans mt-1 font-semibold">Dicetak oleh: PODGE & Badan Pengelola Dana Perkebunan (BPDP)</p>
                 </div>
                 
                 <div className="bg-white p-2 rounded-xl border border-emerald-500/20 shrink-0 shadow-lg text-center">
@@ -580,12 +981,11 @@ export default function FarmIdClient() {
             </div>
           </div>
 
-          {/* CARD CONTROLS (Only visible if record is created/loaded) */}
+          {/* CARD CONTROLS */}
           {record ? (
             <div className="w-full max-w-[500px] flex flex-wrap gap-3 items-center justify-center bg-black/30 p-4 rounded-2xl border border-emerald-950/80">
               
-              {/* Photo Upload Input */}
-              <label className="flex-1 min-w-[150px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition-all cursor-pointer shadow-md active:scale-95 text-center">
+              <label className="flex-grow min-w-[130px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-3 text-xs font-bold transition-all cursor-pointer shadow-md active:scale-95 text-center">
                 <Camera size={15} />
                 <span>{photoUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
                 <input
@@ -596,7 +996,6 @@ export default function FarmIdClient() {
                 />
               </label>
 
-              {/* Delete Photo Button */}
               {photoUrl && (
                 <button
                   type="button"
@@ -611,22 +1010,38 @@ export default function FarmIdClient() {
                 </button>
               )}
 
-              {/* Copy verification Link */}
               <button
                 type="button"
                 onClick={() => copyText(publicLink)}
-                className="flex-1 min-w-[150px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+                className="flex-grow min-w-[130px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
               >
                 <Copy size={15} />
-                <span>Salin Link Publik</span>
+                <span>Salin Link</span>
               </button>
 
-              {/* Print Card */}
+              <button
+                type="button"
+                onClick={() => window.open(publicLink, '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+                title="Buka Tab Baru"
+              >
+                <Eye size={15} />
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadCardAsJpg}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
+                title="Unduh JPG"
+              >
+                <FileText size={15} />
+              </button>
+
               <button
                 type="button"
                 onClick={() => window.print()}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 hover:bg-emerald-950/50 px-4 py-3 text-xs font-bold text-emerald-50 transition"
-                title="Cetak/Simpan PDF Kartu"
+                title="Cetak PDF"
               >
                 <Printer size={15} />
               </button>
@@ -639,7 +1054,7 @@ export default function FarmIdClient() {
             </div>
           )}
 
-          {/* Recovery Code display on fresh generate */}
+          {/* Recovery Code */}
           {identityRecoveryCode && (
             <div className="w-full max-w-[500px] rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs leading-5 text-yellow-100">
               <p className="font-bold flex items-center gap-1.5 text-yellow-400 mb-1">
@@ -717,9 +1132,54 @@ export default function FarmIdClient() {
                   value={record.public_live_at ? new Date(record.public_live_at).toLocaleString('id-ID') : 'Belum dipublikasikan'}
                 />
                 <Info
-                  label="Status Verifikasi Audit"
+                  label="Status Verifikasi Audit (KYC)"
                   value={record.verification_status.toUpperCase()}
                 />
+              </div>
+
+              {/* Detailed KYC Status alert box (Auditor/BPDP status) */}
+              <div className="mt-4">
+                {record.verification_status === 'verified' ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/40 p-4 text-xs text-emerald-200 flex items-start gap-2.5">
+                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-emerald-400">VERIFIKASI KYC LOLOS / VALID</p>
+                      <p className="mt-0.5 text-emerald-300/70">
+                        Kartu identitas ini telah sah diverifikasi oleh verifikator BPDPKS & PODGE. Luas kebun, koperasi mitra, dan koordinat wilayah dinyatakan valid.
+                      </p>
+                      {record.verification_note && (
+                        <p className="mt-2 font-mono text-[10px] text-emerald-400/80 bg-black/30 p-2 rounded">
+                          Catatan Audit: {record.verification_note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : record.verification_status === 'rejected' ? (
+                  <div className="rounded-xl border border-red-500/25 bg-red-950/20 p-4 text-xs text-red-200 flex items-start gap-2.5">
+                    <ShieldAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-red-400">VERIFIKASI KYC DITOLAK</p>
+                      <p className="mt-0.5 text-red-300/70">
+                        Ditemukan ketidakcocokan data. Hubungi admin koperasi verifikator untuk memperbaiki info lahan.
+                      </p>
+                      {record.verification_note && (
+                        <p className="mt-2 font-mono text-[10px] text-red-400/80 bg-black/30 p-2 rounded">
+                          Alasan Penolakan: {record.verification_note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs text-yellow-200 flex items-start gap-2.5">
+                    <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
+                    <div>
+                      <p className="font-bold text-yellow-400">PROSES KYC (MENUNGGU VERIFIKASI)</p>
+                      <p className="mt-0.5 text-yellow-300/70">
+                        Kartu digital telah diterbitkan oleh petani namun masih menunggu verifikasi dokumen fisik oleh Auditor BPDPKS & PODGE.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

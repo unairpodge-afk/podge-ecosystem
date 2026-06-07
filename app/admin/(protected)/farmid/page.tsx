@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { CheckCircle2, Eye, Fingerprint, ShieldAlert, Sprout } from 'lucide-react';
+import { revalidatePath } from 'next/cache';
+import { CheckCircle2, Eye, Fingerprint, ShieldAlert, Sprout, Check, X, Undo2 } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin-auth';
 import { query } from '@/lib/db';
 import { ensureFarmerIdsTable, type FarmerIdRecord } from '@/lib/farmid';
@@ -16,6 +17,44 @@ type FarmIdStats = {
 export default async function AdminFarmIdOversightPage() {
   const { admin } = await requireAdmin();
   await ensureFarmerIdsTable();
+
+  // Server Action for KYC Verification
+  async function performKycAudit(formData: FormData) {
+    'use server';
+    const farmId = formData.get('farmId') as string;
+    const action = formData.get('action') as string; // 'verify' or 'reject' or 'reset'
+    const note = formData.get('note') as string || '';
+    const { admin: activeAdmin } = await requireAdmin();
+
+    let newStatus = 'pending';
+    if (action === 'verify') newStatus = 'verified';
+    if (action === 'reject') newStatus = 'rejected';
+
+    try {
+      await query(`
+        UPDATE farmer_ids
+        SET 
+          verification_status = $1,
+          verified_at = CASE WHEN $1 = 'pending' THEN NULL ELSE NOW() END,
+          verified_by = CASE WHEN $1 = 'pending' THEN NULL ELSE $2 END,
+          verification_note = $3,
+          updated_at = NOW()
+        WHERE farm_id = $4
+      `, [newStatus, activeAdmin.admin_id, note, farmId]);
+
+      // Set public_status to 'live' if verified to make the verification immediately viewable
+      if (newStatus === 'verified') {
+        await query(
+          "UPDATE farmer_ids SET public_status = 'live', public_live_at = NOW() WHERE farm_id = $1",
+          [farmId]
+        );
+      }
+    } catch (err) {
+      console.error('Gagal melakukan KYC Audit:', err);
+    }
+
+    revalidatePath('/admin/farmid');
+  }
 
   const [statsResult, recordsResult] = await Promise.all([
     query<FarmIdStats>(`
@@ -38,10 +77,10 @@ export default async function AdminFarmIdOversightPage() {
   const records = recordsResult.rows;
 
   const statCards = [
-    { label: 'Total FarmID', value: stats.total, note: 'Semua ID petani yang terdaftar', icon: Fingerprint },
-    { label: 'Live Publicly', value: stats.live, note: 'Dipublish langsung oleh petani', icon: CheckCircle2 },
-    { label: 'Draft Publik', value: stats.draft, note: 'Belum ada update publik petani', icon: ShieldAlert },
-    { label: 'Sudah Diklaim', value: stats.claimed, note: 'Private QR sudah dipakai perangkat pertama', icon: Sprout },
+    { label: 'Total FarmID', value: stats.total, note: 'Semua ID petani terdaftar', icon: Fingerprint },
+    { label: 'Live Publicly', value: stats.live, note: 'Telah dipublish / lolos KYC', icon: CheckCircle2 },
+    { label: 'Draft / Pending', value: stats.draft, note: 'Belum terbit / menunggu verifikasi', icon: ShieldAlert },
+    { label: 'Sudah Diklaim', value: stats.claimed, note: 'Telah diklaim oleh petani', icon: Sprout },
   ];
 
   return (
@@ -52,15 +91,14 @@ export default async function AdminFarmIdOversightPage() {
             <Eye size={14} />
             FarmID Oversight
           </div>
-          <h1 className="mt-3 font-space text-3xl font-extrabold text-white">FarmID Public Monitor</h1>
+          <h1 className="mt-3 font-space text-3xl font-extrabold text-white font-space">BPDP & PODGE KYC Oversight</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
-            Monitoring untuk FarmID yang self-published oleh petani. Admin <span className="font-bold text-emerald-200">{admin.role_name}</span> dapat
-            melihat status publik tanpa mengubah atau menahan data FarmID petani.
+            Evaluasi berkas dan kualifikasi lahan (KYC) milik Bapak/Ibu petani. Anda masuk sebagai admin verifikator <span className="font-bold text-emerald-200">{admin.role_name}</span>.
           </p>
         </div>
         <Link
           href="/governance/farmid"
-          className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-extrabold text-black transition hover:bg-emerald-400"
+          className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-emerald-400 font-semibold"
         >
           Buka FarmID Publik
         </Link>
@@ -75,7 +113,7 @@ export default async function AdminFarmIdOversightPage() {
                 <Icon size={20} />
               </div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">{card.label}</p>
-              <p className="mt-2 font-space text-3xl font-extrabold text-white">{card.value}</p>
+              <p className="mt-2 font-space text-3xl font-extrabold text-white font-space">{card.value}</p>
               <p className="mt-2 text-xs leading-5 text-emerald-100/55">{card.note}</p>
             </article>
           );
@@ -84,34 +122,37 @@ export default async function AdminFarmIdOversightPage() {
 
       <section className="rounded-lg border border-emerald-900/60 bg-black/25">
         <div className="border-b border-emerald-900/60 px-5 py-4">
-          <h2 className="font-space text-xl font-bold text-emerald-50">Daftar FarmID Terbaru</h2>
+          <h2 className="font-space text-xl font-bold text-emerald-50 font-space">Verifikasi Berkas Lahan (KYC Panel)</h2>
           <p className="mt-1 text-sm text-emerald-200/55">
-            Halaman ini read-only. Kontrol admin untuk chain governance berikutnya akan diterapkan pada ledger, traceability, compliance, dan pembiayaan.
+            Lakukan verifikasi KTP, legalitas sertifikat lahan sawit, dan kualifikasi BPDP untuk me-release kartu identitas digital ke publik.
           </p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[1100px] text-left text-sm">
             <thead>
-              <tr className="border-b border-emerald-900/60 text-[10px] uppercase tracking-widest text-emerald-400">
-                <th className="px-5 py-3 font-mono font-semibold">FarmID</th>
-                <th className="px-5 py-3 font-mono font-semibold">Petani</th>
-                <th className="px-5 py-3 font-mono font-semibold">Koperasi</th>
-                <th className="px-5 py-3 font-mono font-semibold">Lokasi</th>
-                <th className="px-5 py-3 font-mono font-semibold">Public</th>
-                <th className="px-5 py-3 font-mono font-semibold">Claim</th>
-                <th className="px-5 py-3 font-mono font-semibold">Status Panen</th>
-                <th className="px-5 py-3 font-mono font-semibold">Aksi</th>
+              <tr className="border-b border-emerald-900/60 text-[10px] uppercase tracking-widest text-emerald-400 font-mono">
+                <th className="px-5 py-3 font-semibold">Petani / FarmID</th>
+                <th className="px-5 py-3 font-semibold">Koperasi</th>
+                <th className="px-5 py-3 font-semibold">Alamat & Luas</th>
+                <th className="px-5 py-3 font-semibold">Status Publik</th>
+                <th className="px-5 py-3 font-semibold">Status KYC</th>
+                <th className="px-5 py-3 font-semibold">Catatan Audit</th>
+                <th className="px-5 py-3 font-semibold text-center">Tindakan KYC</th>
+                <th className="px-5 py-3 font-semibold">Tampilan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-950/80">
               {records.map((record) => (
-                <tr key={record.farm_id} className="text-emerald-50/85">
-                  <td className="px-5 py-4 font-mono text-xs text-emerald-300">{record.farm_id}</td>
-                  <td className="px-5 py-4 font-semibold">{record.farmer_name}</td>
+                <tr key={record.farm_id} className="text-emerald-50/85 hover:bg-emerald-950/10">
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-white">{record.farmer_name}</p>
+                    <p className="font-mono text-[10px] text-emerald-400 mt-0.5">{record.farm_id}</p>
+                  </td>
                   <td className="px-5 py-4 text-emerald-100/70">{record.cooperative_name}</td>
                   <td className="px-5 py-4 text-emerald-100/70">
-                    {record.village}, {record.district}, {record.province}
+                    <p>{record.village}, {record.district}</p>
+                    <p className="text-xs text-emerald-400/65 font-bold mt-0.5">{record.area_hectare} Hektar</p>
                   </td>
                   <td className="px-5 py-4">
                     <StatusBadge
@@ -121,19 +162,85 @@ export default async function AdminFarmIdOversightPage() {
                     />
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge
-                      active={record.is_claimed}
-                      activeLabel="Claimed"
-                      inactiveLabel="Open"
-                    />
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      record.verification_status === 'verified'
+                        ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
+                        : record.verification_status === 'rejected'
+                          ? 'border-red-400/40 bg-red-500/15 text-red-300'
+                          : 'border-yellow-400/40 bg-yellow-500/15 text-yellow-200'
+                    }`}>
+                      {record.verification_status === 'verified' ? 'Terverifikasi' :
+                       record.verification_status === 'rejected' ? 'Ditolak' : 'Pending'}
+                    </span>
                   </td>
-                  <td className="px-5 py-4 text-emerald-100/70">{record.harvest_status}</td>
+                  <td className="px-5 py-4 text-xs max-w-[200px] truncate text-emerald-100/60" title={record.verification_note || ''}>
+                    {record.verification_note || '-'}
+                  </td>
+                  
+                  {/* KYC Verification Forms */}
+                  <td className="px-5 py-4">
+                    <form action={performKycAudit} className="flex items-center justify-center gap-2">
+                      <input type="hidden" name="farmId" value={record.farm_id} />
+                      
+                      {record.verification_status === 'pending' ? (
+                        <>
+                          <input
+                            type="text"
+                            name="note"
+                            required
+                            placeholder="Catatan KTP/SHM sesuai..."
+                            className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
+                          />
+                          <button
+                            type="submit"
+                            name="action"
+                            value="verify"
+                            title="Setujui Verifikasi KYC"
+                            className="p-1.5 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            type="submit"
+                            name="action"
+                            value="reject"
+                            title="Tolak Verifikasi KYC"
+                            className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            name="note"
+                            placeholder="Alasan reset/evaluasi..."
+                            className="bg-black/40 border border-emerald-950 text-xs px-2.5 py-1.5 rounded-lg outline-none text-emerald-50 placeholder-emerald-900 focus:border-emerald-600 w-44"
+                          />
+                          <button
+                            type="submit"
+                            name="action"
+                            value="reset"
+                            title="Reset Status Verifikasi ke Pending"
+                            className="p-1.5 rounded-lg border border-yellow-700/60 bg-yellow-950/20 text-yellow-300 hover:bg-yellow-950/50 transition flex items-center gap-1 text-[10px] font-bold"
+                          >
+                            <Undo2 size={12} />
+                            Reset
+                          </button>
+                        </div>
+                      )}
+                    </form>
+                  </td>
+
                   <td className="px-5 py-4">
                     <Link
                       href={`/governance/farmid?mode=view&id=${encodeURIComponent(record.farm_id)}`}
-                      className="inline-flex rounded-md border border-emerald-700/60 px-3 py-1.5 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/70"
+                      target="_blank"
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-700/60 px-3 py-1.5 text-xs font-bold text-emerald-100 transition hover:bg-emerald-950/70"
                     >
-                      Lihat Publik
+                      <Eye size={12} />
+                      Lihat Card
                     </Link>
                   </td>
                 </tr>
