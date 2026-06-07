@@ -90,9 +90,17 @@ export async function POST(request: NextRequest) {
           }),
         ],
       );
+      const identity = result.rows[0];
+
+      if (linkedFarmId) {
+        await query(
+          'UPDATE farmer_ids SET identity_id = $1, updated_at = NOW() WHERE farm_id = $2',
+          [identity.identity_id, linkedFarmId],
+        );
+      }
 
       return NextResponse.json({
-        identity: toPublicIdentity(result.rows[0]),
+        identity: toPublicIdentity(identity),
         privateToken,
         recoveryCode,
       });

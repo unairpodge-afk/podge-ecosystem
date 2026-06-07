@@ -8,6 +8,15 @@ import {
   type FarmerIdRecord,
 } from '@/lib/farmid';
 import { query } from '@/lib/db';
+import {
+  createPodgePrivateToken,
+  createPodgePublicCode,
+  createPodgeRecoveryCode,
+  ensurePodgeIdentitiesTable,
+  hashIdentitySecret,
+  toPublicIdentity,
+  type PodgeIdentityRecord,
+} from '@/lib/identity';
 
 function asText(value: unknown, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
@@ -20,10 +29,13 @@ function asNumber(value: unknown) {
 
 export async function POST(request: NextRequest) {
   await ensureFarmerIdsTable();
+  await ensurePodgeIdentitiesTable();
 
   const body = await request.json();
   const farmId = createFarmId();
   const privateToken = createPrivateToken();
+  const identityToken = createPodgePrivateToken();
+  const recoveryCode = createPodgeRecoveryCode();
   const farmerName = asText(body.farmerName, 'Petani PODGE');
   const cooperativeName = asText(body.cooperativeName, 'Koperasi Belum Diisi');
   const village = asText(body.village, 'Desa Belum Diisi');
@@ -31,19 +43,68 @@ export async function POST(request: NextRequest) {
   const province = asText(body.province, 'Provinsi Belum Diisi');
   const areaHectare = asNumber(body.areaHectare);
 
+  let identity: PodgeIdentityRecord | null = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const identityResult = await query<PodgeIdentityRecord>(
+        `INSERT INTO podge_identities (
+          public_code,
+          private_token_hash,
+          display_name,
+          identity_type,
+          linked_farm_id,
+          recovery_code_hash,
+          metadata
+        )
+        VALUES ($1, $2, $3, 'farmer', $4, $5, $6::jsonb)
+        RETURNING *`,
+        [
+          createPodgePublicCode('farmer'),
+          hashIdentitySecret(identityToken),
+          farmerName,
+          farmId,
+          hashIdentitySecret(recoveryCode),
+          JSON.stringify({
+            source: 'farmid_generate',
+            cooperative_name: cooperativeName,
+            village,
+            district,
+            province,
+          }),
+        ],
+      );
+      identity = identityResult.rows[0];
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (!message.includes('duplicate') && !message.includes('unique')) {
+        throw error;
+      }
+    }
+  }
+
+  if (!identity) {
+    return NextResponse.json({ error: 'Gagal membuat PODGE-ID petani. Coba lagi.' }, { status: 500 });
+  }
+
   const result = await query<FarmerIdRecord>(
     `INSERT INTO farmer_ids (
       farm_id, private_token_hash, farmer_name, cooperative_name, village,
-      district, province, area_hectare
+      district, province, area_hectare, identity_id
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING *`,
-    [farmId, hashSecret(privateToken), farmerName, cooperativeName, village, district, province, areaHectare],
+    [farmId, hashSecret(privateToken), farmerName, cooperativeName, village, district, province, areaHectare, identity.identity_id],
   );
 
   return NextResponse.json({
     record: toPublicRecord(result.rows[0]),
     privateToken,
+    identity: toPublicIdentity(identity),
+    identityPrivateToken: identityToken,
+    identityRecoveryCode: recoveryCode,
   });
 }
 

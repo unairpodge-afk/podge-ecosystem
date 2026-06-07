@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 
 export type FarmerIdRecord = {
   farm_id: string;
+  identity_id: string | null;
   farmer_name: string;
   cooperative_name: string;
   village: string;
@@ -32,6 +33,7 @@ export async function ensureFarmerIdsTable() {
   await query(`
     CREATE TABLE IF NOT EXISTS farmer_ids (
       farm_id TEXT PRIMARY KEY,
+      identity_id UUID,
       private_token_hash TEXT NOT NULL,
       farmer_name TEXT NOT NULL,
       cooperative_name TEXT NOT NULL,
@@ -58,6 +60,7 @@ export async function ensureFarmerIdsTable() {
 
   await query(`
     ALTER TABLE farmer_ids
+      ADD COLUMN IF NOT EXISTS identity_id UUID,
       ADD COLUMN IF NOT EXISTS public_status TEXT NOT NULL DEFAULT 'draft',
       ADD COLUMN IF NOT EXISTS public_live_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending',

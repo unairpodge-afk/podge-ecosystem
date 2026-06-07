@@ -15,9 +15,11 @@ import {
   ShieldAlert,
   Sprout,
 } from 'lucide-react';
+import type { PublicPodgeIdentityRecord } from '@/lib/identity';
 
 type FarmerRecord = {
   farm_id: string;
+  identity_id: string | null;
   farmer_name: string;
   cooperative_name: string;
   village: string;
@@ -46,6 +48,9 @@ type AccessState = {
 type ApiResult = {
   record?: FarmerRecord;
   privateToken?: string;
+  identity?: PublicPodgeIdentityRecord;
+  identityPrivateToken?: string;
+  identityRecoveryCode?: string;
   access?: AccessState;
   canEdit?: boolean;
   message?: string;
@@ -91,6 +96,9 @@ export default function FarmIdClient() {
   const [origin, setOrigin] = useState('');
   const [harvestStatus, setHarvestStatus] = useState('Belum ada update panen');
   const [publicNote, setPublicNote] = useState('');
+  const [identity, setIdentity] = useState<PublicPodgeIdentityRecord | null>(null);
+  const [identityPrivateToken, setIdentityPrivateToken] = useState('');
+  const [identityRecoveryCode, setIdentityRecoveryCode] = useState('');
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -116,6 +124,22 @@ export default function FarmIdClient() {
 
     return `${origin}/governance/farmid?mode=claim&id=${encodeURIComponent(record.farm_id)}&token=${encodeURIComponent(privateToken)}`;
   }, [origin, privateToken, record]);
+
+  const identityPrivateLink = useMemo(() => {
+    if (!origin || !identity || !identityPrivateToken) {
+      return '';
+    }
+
+    return `${origin}/identity/access?id=${encodeURIComponent(identity.public_code)}&token=${encodeURIComponent(identityPrivateToken)}`;
+  }, [identity, identityPrivateToken, origin]);
+
+  const identityPublicLink = useMemo(() => {
+    if (!origin || !identity) {
+      return '';
+    }
+
+    return `${origin}/identity/view?id=${encodeURIComponent(identity.public_code)}`;
+  }, [identity, origin]);
 
   const readFarmId = useCallback(async (id: string, token = privateToken, activeDeviceKey = deviceKey) => {
     if (!id || !activeDeviceKey) {
@@ -176,6 +200,9 @@ export default function FarmIdClient() {
     }
 
     setRecord(data.record);
+    setIdentity(data.identity || null);
+    setIdentityPrivateToken(data.identityPrivateToken || '');
+    setIdentityRecoveryCode(data.identityRecoveryCode || '');
     setPrivateToken(data.privateToken);
     setAccess(emptyAccess);
     setHarvestStatus(data.record.harvest_status);
@@ -345,6 +372,54 @@ export default function FarmIdClient() {
           />
         </section>
       </div>
+
+      {identity ? (
+        <section className="glass-panel rounded-lg p-6">
+          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+                <KeyRound size={14} />
+                PODGE-ID Petani
+              </div>
+              <h2 className="mt-3 font-space text-xl font-bold text-emerald-50">Kartu Identitas Digital Bapak/Ibu Petani</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-200/60">
+                FarmID ini otomatis punya PODGE-ID universal. QR pribadi PODGE-ID disimpan oleh petani,
+                sedangkan QR publik bisa dibagikan untuk menunjukkan identitas tanpa membuka token rahasia.
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-900/60 bg-black/25 p-3">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Public Code</p>
+              <p className="mt-1 break-all font-mono text-sm font-bold text-emerald-50">{identity.public_code}</p>
+            </div>
+          </div>
+
+          {identityRecoveryCode ? (
+            <div className="mb-5 rounded-lg border border-yellow-500/30 bg-yellow-950/25 p-4 text-sm leading-6 text-yellow-100/85">
+              <p className="font-bold">Recovery Code, simpan terpisah dari QR pribadi:</p>
+              <p className="mt-2 break-all font-mono text-yellow-50">{identityRecoveryCode}</p>
+            </div>
+          ) : null}
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <QrPanel
+              title="PODGE-ID Private QR"
+              description="Untuk masuk tanpa email. Simpan di HP petani atau cetak sebagai kartu pribadi."
+              icon={Lock}
+              link={identityPrivateLink}
+              tone="private"
+              onCopy={copyText}
+            />
+            <QrPanel
+              title="PODGE-ID Public QR"
+              description="Boleh dibagikan ke masyarakat, koperasi, atau mitra untuk melihat identitas publik."
+              icon={Eye}
+              link={identityPublicLink}
+              tone="public"
+              onCopy={copyText}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="glass-panel rounded-lg p-6">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
