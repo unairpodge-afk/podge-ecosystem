@@ -12,16 +12,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { downstream } = body;
 
-    if (!downstream) {
-      return NextResponse.json({ error: 'Data supply chain tidak valid.' }, { status: 400 });
-    }
-
-    // Merge downstream data into metadata
     const updatedMetadata = {
       ...(identity.metadata || {}),
-      downstream,
+      ...body,
       updated_at: new Date().toISOString()
     };
 
@@ -32,23 +26,22 @@ export async function POST(request: NextRequest) {
       [identity.identity_id, JSON.stringify(updatedMetadata)]
     );
 
-    // Append a ledger event to record the supply chain update
     try {
       await appendLedgerEvent({
         entityType: 'identity',
         entityId: identity.public_code,
-        action: 'identity.downstream_updated',
+        action: 'identity.metadata_updated',
         actor: { name: identity.display_name },
         payload: {
           identity_id: identity.identity_id,
-          downstream
+          updated_fields: Object.keys(body)
         }
       });
     } catch (ledgerErr) {
-      console.error('Failed to log downstream update to ledger:', ledgerErr);
+      console.error('Failed to log metadata update to ledger:', ledgerErr);
     }
 
-    return NextResponse.json({ success: true, message: 'Data supply chain berhasil diperbarui.' });
+    return NextResponse.json({ success: true, message: 'Metadata berhasil diperbarui.' });
   } catch (error) {
     console.error('Error in update-metadata:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan sistem saat memperbarui data.' }, { status: 500 });

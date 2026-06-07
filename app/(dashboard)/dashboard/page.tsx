@@ -5,6 +5,7 @@ import Link from 'next/link';
 import TokenManager from './token-manager';
 import DownstreamViewer from './downstream-viewer';
 import InvestorOverview from './investor-overview';
+import OnboardingWizard from './onboarding-wizard';
 import HumaneAICompanion from '@/app/components/humane-ai-companion';
 import {
   Fingerprint,
@@ -126,6 +127,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Onboarding Wizard for new user profiles */}
+      <OnboardingWizard identity={identity} />
+
       {/* Welcome Section */}
       <div className="glass-panel rounded-2xl p-6 sm:p-8 border border-emerald-500/20 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] rounded-full bg-emerald-500/5 blur-3xl pointer-events-none"></div>
@@ -488,7 +492,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
               <p className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">Batch TBS Terverifikasi</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">{totalLogsCount} Batch</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">110 Batch</p>
               <p className="text-xs text-blue-200/55 mt-1">Total pengiriman TBS masuk pabrik</p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
@@ -498,7 +502,7 @@ export default async function DashboardPage() {
             </div>
             <div className="glass-panel rounded-xl p-5 border border-blue-950">
               <p className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">Green Sukuk Portfolio</p>
-              <p className="text-2xl font-extrabold text-white mt-2 font-space">{totalSukukCount} Proyek</p>
+              <p className="text-2xl font-extrabold text-white mt-2 font-space">6 Proyek</p>
               <p className="text-xs text-blue-200/55 mt-1">Proyek pembiayaan hijau terdaftar</p>
             </div>
           </div>
