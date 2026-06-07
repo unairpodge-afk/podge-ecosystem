@@ -171,10 +171,14 @@ export default async function DashboardPage() {
             <div className="glass-panel rounded-xl p-5 border border-emerald-950">
               <p className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider">Status FarmID</p>
               <p className="text-2xl font-extrabold text-white mt-2 font-space">
-                {farmRecord ? 'Terhubung' : 'Belum Ada Klaim'}
+                {farmRecord 
+                  ? (farmRecord.verification_status === 'verified' ? 'Terverifikasi' 
+                      : farmRecord.verification_status === 'rejected' ? 'Ditolak (Invalid)' 
+                      : 'Menunggu Verifikasi')
+                  : 'Belum Ada Klaim'}
               </p>
               <p className="text-xs text-emerald-200/55 mt-1">
-                {farmRecord ? `ID: ${farmRecord.farm_id}` : 'Silakan klaim FarmID Anda'}
+                {farmRecord ? `ID Lahan: ${farmRecord.farm_id}` : 'Silakan klaim FarmID Anda'}
               </p>
             </div>
             <div className="glass-panel rounded-xl p-5 border border-emerald-950">

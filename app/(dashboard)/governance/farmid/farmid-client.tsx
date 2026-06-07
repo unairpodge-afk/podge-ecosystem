@@ -809,11 +809,11 @@ export default function FarmIdClient({
 
         <div className="text-center no-print">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
-            <Building size={14} />
-            Verifikasi Identitas Petani (BPDP & PODGE)
+            <Sprout size={14} />
+            Portal Verifikasi Lahan
           </div>
-          <h1 className="mt-3 font-space text-2xl font-extrabold text-white">Kartu Identitas Petani Digital</h1>
-          <p className="text-xs text-emerald-300/60 mt-1">Halaman verifikasi kredensial legalitas kebun sawit mandiri.</p>
+          <h1 className="mt-3 font-space text-2xl font-extrabold text-white">Verifikasi Legalitas Kebun</h1>
+          <p className="text-xs text-emerald-300/60 mt-1">Laman resmi pengecekan status pendaftaran lahan petani kelapa sawit mandiri.</p>
         </div>
 
         {/* KYC Verification status alert box (Auditor/BPDP status) */}
@@ -823,9 +823,9 @@ export default function FarmIdClient({
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/40 p-4 text-xs text-emerald-200 flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-emerald-400">VERIFIKASI KYC LOLOS / VALID</p>
+                  <p className="font-bold text-emerald-400">STATUS: TERVERIFIKASI</p>
                   <p className="mt-0.5 text-emerald-300/70">
-                    Kartu identitas ini telah sah diverifikasi oleh verifikator BPDPKS & PODGE. Luas kebun, koperasi mitra, dan koordinat wilayah dinyatakan valid.
+                    Lahan dan identitas petani ini telah sah terverifikasi. Seluruh koordinat bebas dari zona deforestasi.
                   </p>
                   {record.verification_note && (
                     <p className="mt-2 font-mono text-[10px] text-emerald-400/80 bg-black/30 p-2 rounded">
@@ -838,9 +838,9 @@ export default function FarmIdClient({
               <div className="rounded-xl border border-red-500/25 bg-red-950/20 p-4 text-xs text-red-200 flex items-start gap-2.5">
                 <ShieldAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-red-400">VERIFIKASI KYC DITOLAK</p>
+                  <p className="font-bold text-red-400">STATUS: DITOLAK / INVALID</p>
                   <p className="mt-0.5 text-red-300/70">
-                    Ditemukan ketidakcocokan data. Hubungi admin koperasi verifikator untuk memperbaiki info lahan.
+                    Ditemukan ketidaksesuaian data spasial atau identitas. Mohon petani yang bersangkutan untuk memperbaiki data pengajuan lahan.
                   </p>
                   {record.verification_note && (
                     <p className="mt-2 font-mono text-[10px] text-red-400/80 bg-black/30 p-2 rounded">
@@ -853,9 +853,9 @@ export default function FarmIdClient({
               <div className="rounded-xl border border-yellow-500/20 bg-yellow-950/20 p-4 text-xs text-yellow-200 flex items-start gap-2.5">
                 <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
                 <div>
-                  <p className="font-bold text-yellow-400">PROSES KYC (SEDANG DALAM PROSES VERIFIKASI)</p>
+                  <p className="font-bold text-yellow-400">STATUS: MENUNGGU VERIFIKASI (PENDING)</p>
                   <p className="mt-0.5 text-yellow-300/70">
-                    Kartu digital Anda saat ini sedang dalam proses verifikasi dokumen oleh verifikator BPDPKS & PODGE. Silakan tunggu hingga status KYC diperbarui.
+                    Lahan ini sedang dalam proses peninjauan tata ruang dan legalitas oleh tim auditor independen.
                   </p>
                 </div>
               </div>
