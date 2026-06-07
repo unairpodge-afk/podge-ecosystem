@@ -19,7 +19,8 @@ import {
   Calendar,
   AlertCircle,
   HelpCircle,
-  Eye
+  Eye,
+  Brain
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
