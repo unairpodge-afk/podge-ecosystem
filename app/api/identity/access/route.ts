@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await query<PodgeIdentityRecord>(
-    'SELECT * FROM podge_identities WHERE public_code = $1 LIMIT 1',
+    'SELECT * FROM podge_identities WHERE UPPER(public_code) = $1 OR UPPER(linked_farm_id) = $1 LIMIT 1',
     [publicCode],
   );
   const identity = result.rows[0];
