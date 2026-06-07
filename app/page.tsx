@@ -149,20 +149,54 @@ export default async function MainLandingPage() {
                 Daftar Baru
               </Link>
             )}
-            <Link href="/value-creation/green-sukuk" className="border border-emerald-800/60 hover:bg-emerald-950/30 text-white text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide">
-              Explore Green Financing
-            </Link>
-            <Link href="/public-monitoring" className="border border-emerald-500/60 hover:bg-emerald-500/20 text-emerald-400 text-center font-bold px-8 py-3 rounded-lg text-sm transition-all font-space tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-              Pengawasan Masyarakat
-            </Link>
           </div>
 
         </div>
 
         {/* Right column graphic / live logs card */}
-        <div className="lg:col-span-5 relative">
+        <div className="lg:col-span-5 space-y-6 relative">
           
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-green-700 rounded-2xl blur-xl opacity-25"></div>
+          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-green-700 rounded-2xl blur-xl opacity-20 pointer-events-none"></div>
+          
+          {/* Neon Sawit Glow Card */}
+          <div className="relative glass-panel rounded-2xl p-6 border border-emerald-500/30 bg-black/40 flex flex-col items-center justify-center text-center overflow-hidden group">
+            <div className="absolute -top-10 -left-10 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/25 transition-all"></div>
+            
+            {/* Elegant glowing Neon Sawit SVG */}
+            <div className="relative z-10 py-4 flex items-center justify-center">
+              <svg viewBox="0 0 200 200" className="w-44 h-44 drop-shadow-[0_0_35px_rgba(16,185,129,0.85)] animate-pulse animate-duration-3000" fill="none">
+                {/* Dotted target rings */}
+                <circle cx="100" cy="100" r="85" stroke="rgba(16,185,129,0.2)" strokeWidth="1" strokeDasharray="3 3" />
+                <circle cx="100" cy="100" r="95" stroke="rgba(16,185,129,0.08)" strokeWidth="0.8" />
+                
+                {/* Central Stem */}
+                <path d="M100 180 C100 130, 100 60, 100 20" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" />
+                
+                {/* Left Leaflets */}
+                <path d="M100 160 C72 150, 42 130, 28 110" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M100 135 C68 125, 32 105, 18 80" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M100 110 C62 100, 28 80, 12 50" stroke="#10b981" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M100 85 C62 75, 32 55, 18 25" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M100 60 C68 50, 42 35, 32 15" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                
+                {/* Right Leaflets */}
+                <path d="M100 160 C128 150, 158 130, 172 110" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M100 135 C132 125, 168 105, 182 80" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M100 110 C138 100, 172 80, 188 50" stroke="#10b981" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M100 85 C138 75, 168 55, 182 25" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M100 60 C132 50, 158 35, 168 15" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            
+            <div className="space-y-1 mt-2">
+              <h4 className="font-space text-sm font-extrabold text-white tracking-wide uppercase">
+                PODGE Cyber-Sawit Node
+              </h4>
+              <p className="text-[10px] font-mono text-emerald-400">
+                SECURE GOVERNANCE SEED ACTIVE
+              </p>
+            </div>
+          </div>
           
           {/* Web3 Glowing Glass Card mimicking Terminal & ledger */}
           <div className="relative glass-panel rounded-2xl p-6 border border-emerald-500/20 text-left overflow-hidden">
